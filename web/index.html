@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>CAEK — PI in de Mix</title>
+<meta name="description" content="Caek en Cupcaek proberen één PI te overleven. Druk bezig zijn levert geen punten op. Waarde leveren wel.">
+<meta name="theme-color" content="#0d1b4c">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><text y='26' font-size='26'>🍞</text></svg>">
+<link rel="stylesheet" href="./src/ui/ui.css">
+<script type="importmap">
+{
+  "imports": {
+    "three": "./vendor/three/three.module.min.js",
+    "three/webgpu": "./vendor/three/three.module.min.js",
+    "three/addons/": "./vendor/three/examples/jsm/"
+  }
+}
+</script>
+</head>
+<body>
+
+<canvas id="scherm"></canvas>
+
+<!-- ============================ HUD ============================ -->
+<div id="hud" hidden>
+  <div class="hud-links">
+    <div class="portret" id="portret-caek"><span>🍞</span><b>CAEK</b><i id="levens-caek">♥♥♥</i></div>
+    <div class="portret" id="portret-cupcaek"><span>🧁</span><b>CUPCAEK</b><i>♥♥♥</i></div>
+  </div>
+
+  <div class="hud-midden">
+    <div class="tellers">
+      <div class="teller" title="Ingrediënten in je mand">🧺 <b id="teller-mand">0</b></div>
+      <div class="teller" title="Meetinstrumenten">📊 <b id="teller-metrics">0</b>/3</div>
+      <div class="teller" title="Feedback sprinkles">💬 <b id="teller-sprinkles">0</b></div>
+    </div>
+  </div>
+
+  <div class="hud-rechts">
+    <div class="value-blok">
+      <div class="value-kop"><span>VALUE</span><b id="value-getal">0%</b></div>
+      <div class="value-balk"><i id="value-vul"></i></div>
+      <div class="energie-balk" title="Value Energy — vult zich van waardevolle acties"><i id="energie-vul"></i></div>
+      <div class="doelenwiel-mini" id="wiel-mini" title="Doelenwiel — waar deze PI aan bijdraagt"></div>
+    </div>
+    <div class="sectiekaart">
+      <div id="sectie-naam">START PI</div>
+      <div id="sprintdoel"></div>
+    </div>
+  </div>
+
+  <div id="super-prompt" hidden><b>VALUE ENERGY VOL</b><span>druk <kbd>Shift</kbd></span></div>
+  <div id="value-pluspjes"></div>
+</div>
+
+<!-- ====================== interactie-prompt ====================== -->
+<div id="prompt" hidden><kbd>E</kbd><span></span></div>
+
+<!-- ========================= dialoog ========================= -->
+<div id="dialoog" hidden>
+  <div class="bubbel">
+    <div class="spreker"><span class="avatar"></span><b></b></div>
+    <p></p>
+    <div class="verder">▸ <kbd>spatie</kbd></div>
+  </div>
+</div>
+
+<!-- ========================== paneel ========================== -->
+<div id="paneel" hidden>
+  <div class="paneel-doos">
+    <h2></h2>
+    <p class="paneel-uitleg"></p>
+    <div class="paneel-keuzes"></div>
+    <div class="paneel-voet"></div>
+  </div>
+</div>
+
+<!-- ======================= grote titelkaart ======================= -->
+<div id="titelkaart" hidden><b></b><i></i></div>
+
+<!-- ========================== startscherm ========================== -->
+<div id="startscherm">
+  <div class="start-doos">
+    <div class="start-logo">
+      <span class="logo-caek">CAEK</span>
+      <span class="logo-sub">PI in de Mix</span>
+    </div>
+    <p class="start-pitch">
+      Caek en Cupcaek proberen één PI te overleven.<br>
+      <b>Druk bezig zijn levert geen punten op. Waarde leveren wel.</b>
+    </p>
+    <div class="start-toetsen">
+      <div><kbd>←</kbd><kbd>→</kbd> lopen</div>
+      <div><kbd>spatie</kbd> springen</div>
+      <div><kbd>E</kbd> praten / pakken</div>
+      <div><kbd>Shift</kbd> SuperCaek</div>
+    </div>
+    <button id="start-knop" disabled>de oven warmt op…</button>
+    <div class="start-opties">
+      <label>beeldkwaliteit
+        <select id="kwaliteit">
+          <option value="auto" selected>automatisch</option>
+          <option value="hoog">hoog — dikke verf</option>
+          <option value="midden">midden</option>
+          <option value="laag">laag</option>
+          <option value="uit">uit — kale 3D</option>
+        </select>
+      </label>
+      <label><input type="checkbox" id="geluid" checked> geluid</label>
+    </div>
+    <div class="start-voet">een afscheidscadeau voor cluster CAEK · Afnemers en Ketenpartners</div>
+  </div>
+</div>
+
+<!-- ========================== eindscherm ========================== -->
+<div id="eindscherm" hidden></div>
+
+<noscript><p style="color:#fff;font:16px sans-serif;padding:2rem">Deze goodie heeft JavaScript nodig.</p></noscript>
+
+<script type="module" src="./src/main.js"></script>
+</body>
+</html>
