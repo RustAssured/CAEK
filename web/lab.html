@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CAEK — Verflab</title>
+<meta name="robots" content="noindex">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><text y='26' font-size='26'>🎨</text></svg>">
+<link rel="stylesheet" href="./src/lab/lab.css">
+<script type="importmap">
+{
+  "imports": {
+    "three": "./vendor/three/three.module.min.js",
+    "three/addons/": "./vendor/three/examples/jsm/"
+  }
+}
+</script>
+</head>
+<body>
+
+<canvas id="doek"></canvas>
+
+<div id="wisser" hidden><i></i><b>filter</b><b>geometrie</b></div>
+
+<aside id="paneel">
+  <header>
+    <h1>Verflab</h1>
+    <p>Draai aan de stijl en kijk meteen wat het doet. <a href="./index.html">← naar de game</a></p>
+  </header>
+
+  <div class="rij-knoppen">
+    <button id="knop-vergelijk" class="schakel">Vergelijk A/B</button>
+    <button id="knop-panning" class="schakel">Camera pant</button>
+  </div>
+
+  <label class="veld">
+    <span>Weergave</span>
+    <select id="weergave">
+      <option value="eind">Eindbeeld</option>
+      <option value="scene">Kale 3D-scene</option>
+      <option value="kuwahara">Kuwahara (zonder streken)</option>
+      <option value="streken">Streken (zonder belichting)</option>
+      <option value="hoogte">Hoogteveld (impasto)</option>
+      <option value="tensor">Flowveld</option>
+    </select>
+  </label>
+
+  <label class="veld">
+    <span>Uitsnede</span>
+    <select id="uitsnede">
+      <option value="totaal">Totaal</option>
+      <option value="karakter">Caek van dichtbij</option>
+      <option value="oven">Oven</option>
+      <option value="lucht">Lucht en cipres</option>
+      <option value="grond">Grond en rand</option>
+    </select>
+  </label>
+
+  <div id="regelaars"></div>
+
+  <footer>
+    <div class="rij-knoppen">
+      <button id="knop-kopieer" class="primair">Kopieer als JS</button>
+      <button id="knop-herstel">Standaard</button>
+    </div>
+    <div id="melding"></div>
+    <dl id="meters">
+      <div><dt>fps</dt><dd id="meter-fps">–</dd></div>
+      <div><dt>streken</dt><dd id="meter-streken">–</dd></div>
+      <div><dt>buffer</dt><dd id="meter-buffer">–</dd></div>
+    </dl>
+    <p class="hint">Slepen = pannen · scrollen = in- en uitzoomen · <kbd>H</kbd> verbergt dit paneel</p>
+  </footer>
+</aside>
+
+<script type="module" src="./src/lab/lab.js"></script>
+</body>
+</html>

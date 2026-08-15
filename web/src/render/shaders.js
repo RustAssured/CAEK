@@ -285,6 +285,146 @@ void main() {
 }
 `;
 
+/* ================================================================== *
+ * STREKEN — penseelhalen als echte geometrie
+ * ================================================================== *
+ *
+ * De Kuwahara-keten hierboven is een filter: hij smeert pixels uit. Deze
+ * pass legt in plaats daarvan duizenden losse quads neer, elk gedraaid
+ * langs het flowveld en gekleurd door het geschilderde beeld eronder. Dat
+ * is het verschil tussen "gefilterde 3D" en iets dat eruitziet alsof er
+ * daadwerkelijk halen op een doek staan: streken lopen over silhouetranden
+ * heen, ze overlappen, en waar ze overlappen ligt de verf dikker.
+ *
+ * Twee uitgangen (MRT):
+ *   0 — kleur, premultiplied
+ *   1 — hoogte, waaruit de finale-pass echt reliëf belicht
+ */
+
+export const streekVertex = /* glsl */ `
+precision highp float;
+
+attribute vec2 aAnker;        // rasterpositie in uv, met jitter
+attribute vec4 aWillekeur;    // per streek: lengte, breedte, hoek, borstel
+
+uniform sampler2D uKleur;     // het geschilderde beeld (Kuwahara)
+uniform sampler2D uTensor;    // het gladde flowveld
+uniform vec2 uResolutie;
+uniform vec2 uVerschuiving;   // camerapan, zodat streken aan de wereld plakken
+uniform float uLengte;
+uniform float uBreedte;
+uniform float uHoekRuis;      // hoeveel streken van het flowveld af mogen wijken
+uniform float uRandKrimp;     // korter worden bij sterke randen
+uniform float uAnisotropie;   // lengte volgt de anisotropie van het veld
+uniform float uDetail;        // 1 = deze laag verschijnt alleen waar detail zit
+
+varying vec3 vKleur;
+varying vec2 vQuad;
+varying float vBorstel;
+varying float vWeging;
+
+${flowChunk}
+
+void main() {
+  vec2 anker = fract(aAnker + uVerschuiving);
+
+  vec3 tensor = texture2D(uTensor, anker).xyz;
+  vec4 stroom = flowInfo(tensor);
+  vec2 richting = stroom.xy;
+  float anis = stroom.z;
+  float randKracht = sqrt(max(stroom.w, 0.0));
+
+  vKleur = texture2D(uKleur, anker).rgb;
+
+  // Een streek mag best een beetje eigenwijs zijn; perfect uitgelijnd leest
+  // als een kam in plaats van als een hand.
+  float hoek = (aWillekeur.z - 0.5) * uHoekRuis;
+  float ch = cos(hoek), sh = sin(hoek);
+  richting = mat2(ch, -sh, sh, ch) * richting;
+
+  // Kleiner bij randen, zodat een streek niet ver over een silhouet heen
+  // smeert en een klein karakter niet in twee halen verdwijnt. De lengte
+  // krimpt harder dan de breedte: dat houdt de haal een haal.
+  float krimp = 1.0 / (1.0 + randKracht * uRandKrimp);
+  float lengte = uLengte * (0.55 + 0.9 * aWillekeur.x) * mix(1.0, 0.45 + anis, uAnisotropie) * krimp;
+  float breedte = uBreedte * (0.65 + 0.7 * aWillekeur.y) * mix(1.0, krimp, 0.65);
+
+  vec2 t = richting;
+  vec2 n = vec2(-richting.y, richting.x);
+  vec2 verplaatsing = position.x * t * lengte + position.y * n * breedte;
+
+  vec2 uv = anker + verplaatsing / uResolutie;
+  gl_Position = vec4(uv * 2.0 - 1.0, 0.0, 1.0);
+
+  vQuad = position.xy * 2.0;          // -1 .. 1
+  vBorstel = aWillekeur.w;
+
+  // Een schilder zet grove halen overal neer en pakt pas een fijn penseel
+  // waar iets te zien is. Zonder dit dekt de detaillaag ook de lucht af en
+  // verdwijnt precies de brede, zwierige streek die je wilt houden.
+  vWeging = mix(1.0, smoothstep(0.04, 0.55, randKracht), uDetail);
+}
+`;
+
+export const streekFragment = /* glsl */ `
+precision highp float;
+
+varying vec3 vKleur;
+varying vec2 vQuad;
+varying float vBorstel;
+varying float vWeging;
+
+uniform float uDekking;
+uniform float uHaren;      // hoe sterk de borstelharen doorkomen
+uniform float uHoogte;
+
+layout(location = 0) out vec4 uitKleur;
+layout(location = 1) out vec4 uitHoogte;
+
+${ruis}
+
+void main() {
+  float x = vQuad.x;   // langs de streek
+  float y = vQuad.y;   // dwars erop
+
+  float langs = 1.0 - x * x;
+  float dwars = 1.0 - y * y;
+  if (langs <= 0.0 || dwars <= 0.0) discard;
+
+  // losse haren: strepen evenwijdig aan de streek die minder verf dragen
+  float haren = mix(1.0, 0.55 + 0.65 * ruis2(vec2(x * 2.4, y * 9.0 + vBorstel * 57.0)), uHaren);
+
+  // uiteinden lopen uit, de aanzet is voller dan het einde
+  float uiteinde = smoothstep(0.0, 0.42, langs) * (0.75 + 0.25 * smoothstep(-1.0, 0.4, -x));
+  float alfa = uiteinde * smoothstep(0.0, 0.5, dwars) * haren * uDekking * vWeging;
+  if (alfa < 0.004) discard;
+
+  // De koepel van de haal: in het midden ligt de verf dikker dan aan de
+  // randen. Waar streken elkaar overlappen wint de bovenste — precies zoals
+  // natte verf zich gedraagt.
+  float koepel = dwars * (0.45 + 0.55 * langs) * haren;
+
+  uitKleur = vec4(vKleur * alfa, alfa);
+  uitHoogte = vec4(koepel * uHoogte * alfa, alfa, 0.0, alfa);
+}
+`;
+
+/** Grondlaag: het geschilderde beeld als onderschildering, zodat er nooit
+ *  gaten tussen de streken vallen. */
+export const grondlaagFragment = /* glsl */ `
+precision highp float;
+varying vec2 vUv;
+uniform sampler2D uKleur;
+uniform float uBasisHoogte;
+layout(location = 0) out vec4 uitKleur;
+layout(location = 1) out vec4 uitHoogte;
+
+void main() {
+  uitKleur = vec4(texture2D(uKleur, vUv).rgb, 1.0);
+  uitHoogte = vec4(uBasisHoogte, 1.0, 0.0, 1.0);
+}
+`;
+
 /* ------------------------------------------------------------------ *
  * Pass 6 — finale: LIC-smeer, impasto-reliëf, korrel, split-toning,
  * vignet, en het comicpad voor SuperCaek (gecrossfade met uSuper)
@@ -294,8 +434,10 @@ precision highp float;
 varying vec2 vUv;
 uniform sampler2D uVerf;
 uniform sampler2D uTensor;
+uniform sampler2D uHoogteKaart;   // echte streekhoogte (0 als er geen streken zijn)
 uniform vec2 uPixel;
 uniform float uTijd;
+uniform float uStreken;           // 1 = hoogte komt uit de streken, 0 = uit de luminantie
 uniform float uLic;
 uniform float uImpasto;
 uniform float uKorrel;
@@ -342,8 +484,6 @@ vec3 lic(vec2 uv, float stappen) {
 /* Hoogteveld voor het impasto: helderheid van de verf plus borstelkorrel
    die dwars op de streek loopt. */
 float hoogte(vec2 uv, vec2 f, vec2 n) {
-  vec3 c = texture2D(uVerf, uv).rgb;
-  float h = luminantie(c);
   // korrel in pixelmaat, niet in uv: langgerekt lángs de streek (~20 px) en
   // fijn dwars erop (~3 px). In uv-ruimte werd dit ruis op pixelniveau en dat
   // leest als sneeuw in plaats van als borstelharen.
@@ -351,6 +491,14 @@ float hoogte(vec2 uv, vec2 f, vec2 n) {
   vec2 lokaal = vec2(dot(pix, f), dot(pix, n));  // pixels langs / dwars op de streek
   float korrel = ruis2(lokaal * vec2(0.05, 0.34)) - 0.5;
   korrel += (ruis2(lokaal * vec2(0.11, 0.72)) - 0.5) * 0.45;
+
+  // Met streek-geometrie is de hoogte echt: waar halen elkaar overlappen
+  // ligt de verf dikker. Zonder streken leiden we hem af uit de helderheid,
+  // wat een aardige benadering is maar geen echte ribbels geeft.
+  float h = uStreken > 0.5
+    ? texture2D(uHoogteKaart, uv).r
+    : luminantie(texture2D(uVerf, uv).rgb);
+
   return h + korrel * uKorrel;
 }
 
@@ -391,7 +539,8 @@ void main() {
     float hD = hoogte(vUv - vec2(0.0, uPixel.y), f, n);
     float hU = hoogte(vUv + vec2(0.0, uPixel.y), f, n);
 
-    vec3 N = normalize(vec3((hL - hR) * uImpasto * 26.0, (hD - hU) * uImpasto * 26.0, 1.0));
+    float sterkte = uImpasto * (uStreken > 0.5 ? 62.0 : 26.0);
+    vec3 N = normalize(vec3((hL - hR) * sterkte, (hD - hU) * sterkte, 1.0));
     vec3 L = normalize(vec3(-0.55, 0.64, 0.54));   // strijklicht linksboven
     float diffuus = clamp(dot(N, L), 0.0, 1.0);
     float glans = pow(clamp(dot(reflect(-L, N), vec3(0.0, 0.0, 1.0)), 0.0, 1.0), 28.0);

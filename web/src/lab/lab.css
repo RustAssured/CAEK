@@ -1,0 +1,184 @@
+/* CAEK — Verflab. Zakelijk paneel; het doek moet de aandacht krijgen. */
+
+:root {
+  --blauw-diep: #0b1640;
+  --blauw: #17307d;
+  --goud: #f5b229;
+  --goud-licht: #ffd873;
+  --room: #fdf3d8;
+  --paneel: #0d1530;
+  --lijn: #24356e;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+  background: #05091c;
+  color: var(--room);
+  font: 13px/1.45 "Trebuchet MS", Verdana, system-ui, sans-serif;
+}
+
+#doek { position: fixed; inset: 0; width: 100%; height: 100%; display: block; cursor: grab; }
+#doek:active { cursor: grabbing; }
+
+kbd {
+  display: inline-block; padding: .05em .35em; border-radius: .25em;
+  border: 1px solid var(--lijn); border-bottom-width: 2px;
+  background: #16224a; font: 600 .9em/1.2 inherit;
+}
+
+/* ------------------------------- paneel ------------------------------- */
+
+#paneel {
+  position: fixed;
+  top: 0; right: 0; bottom: 0;
+  width: min(340px, 92vw);
+  padding: 14px 14px 10px;
+  overflow-y: auto;
+  background: rgba(13, 21, 48, .93);
+  backdrop-filter: blur(8px);
+  border-left: 2px solid var(--lijn);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  transition: transform .25s ease;
+}
+#paneel.verborgen { transform: translateX(100%); }
+
+#paneel header h1 {
+  margin: 0;
+  font: 900 22px/1 "Arial Black", sans-serif;
+  letter-spacing: .04em;
+  color: var(--goud);
+}
+#paneel header p { margin: .35em 0 0; opacity: .7; font-size: 12px; }
+#paneel header a { color: var(--goud-licht); }
+
+.rij-knoppen { display: flex; gap: 6px; flex-wrap: wrap; }
+
+button {
+  flex: 1 1 auto;
+  padding: .5em .7em;
+  border: 1px solid var(--lijn);
+  border-radius: 8px;
+  background: #16224a;
+  color: var(--room);
+  font: 600 12px/1 inherit;
+  cursor: pointer;
+}
+button:hover { background: #1d2c5e; }
+button.schakel.aan { background: var(--goud); border-color: var(--goud); color: var(--blauw-diep); }
+button.primair { background: var(--goud); border-color: var(--goud); color: var(--blauw-diep); font-weight: 700; }
+button.primair:hover { filter: brightness(1.08); }
+
+.veld { display: flex; align-items: center; gap: 8px; font-size: 12px; }
+.veld > span { flex: 0 0 72px; opacity: .75; }
+.veld select {
+  flex: 1;
+  padding: .4em;
+  border-radius: 7px;
+  border: 1px solid var(--lijn);
+  background: #16224a;
+  color: var(--room);
+  font: inherit;
+}
+
+/* ----------------------------- regelaars ----------------------------- */
+
+#regelaars { display: flex; flex-direction: column; gap: 4px; }
+
+.groep > summary {
+  padding: .45em .6em;
+  margin-top: 4px;
+  border-radius: 8px;
+  background: #16224a;
+  font: 700 12px/1 inherit;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+  color: var(--goud-licht);
+  cursor: pointer;
+  list-style: none;
+}
+.groep > summary::before { content: "▸ "; }
+.groep[open] > summary::before { content: "▾ "; }
+.groep > div { padding: 6px 2px 10px; display: flex; flex-direction: column; gap: 7px; }
+
+.regelaar { display: grid; grid-template-columns: 1fr auto; gap: 2px 8px; align-items: center; }
+.regelaar label { font-size: 12px; opacity: .85; }
+.regelaar output {
+  font: 600 11px/1 ui-monospace, monospace;
+  color: var(--goud-licht);
+  min-width: 46px;
+  text-align: right;
+}
+.regelaar input[type="range"] {
+  grid-column: 1 / -1;
+  width: 100%;
+  height: 16px;
+  margin: 0;
+  accent-color: var(--goud);
+}
+.regelaar .uitleg { grid-column: 1 / -1; font-size: 11px; opacity: .5; margin-top: -2px; }
+
+.regelaar.schakelaar { grid-template-columns: auto 1fr; }
+.regelaar.schakelaar input { width: 16px; height: 16px; accent-color: var(--goud); }
+
+/* ------------------------------- voet ------------------------------- */
+
+#paneel footer { margin-top: auto; padding-top: 8px; border-top: 1px solid var(--lijn); display: flex; flex-direction: column; gap: 8px; }
+
+#melding { min-height: 1.2em; font-size: 11px; color: var(--goud-licht); }
+
+#meters { display: flex; gap: 10px; margin: 0; font-size: 11px; }
+#meters div { display: flex; gap: 4px; }
+#meters dt { opacity: .55; }
+#meters dd { margin: 0; font: 600 11px/1.4 ui-monospace, monospace; color: var(--goud-licht); }
+
+.hint { margin: 0; font-size: 11px; opacity: .45; }
+
+/* ------------------------------ wisser ------------------------------ */
+
+#wisser {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+}
+#wisser[hidden] { display: none; }
+#wisser i {
+  position: absolute;
+  top: 0; bottom: 0;
+  width: 2px;
+  margin-left: -1px;
+  background: var(--goud);
+  box-shadow: 0 0 12px rgba(245, 178, 41, .8);
+  pointer-events: auto;
+  cursor: ew-resize;
+}
+#wisser i::after {
+  content: "↔";
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  width: 28px; height: 28px;
+  border-radius: 50%;
+  background: var(--goud);
+  color: var(--blauw-diep);
+  font: 700 15px/28px sans-serif;
+  text-align: center;
+}
+#wisser b {
+  position: absolute;
+  top: 12px;
+  padding: .25em .7em;
+  border-radius: 999px;
+  background: rgba(11, 22, 64, .85);
+  border: 1px solid var(--lijn);
+  font-size: 11px;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+#wisser b:nth-of-type(1) { left: 12px; }
+#wisser b:nth-of-type(2) { left: 50%; transform: translateX(8px); }
