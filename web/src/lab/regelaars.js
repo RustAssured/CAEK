@@ -15,8 +15,21 @@ export const REGELAARS = [
       S('streken.haren', 'Borstelharen', 0, 1, 0.01, 'Hoe sterk losse haren in de haal doorkomen.'),
       S('streken.hoekRuis', 'Eigenwijsheid', 0, 1.6, 0.01, 'Hoeveel een haal van het flowveld mag afwijken. Nul leest als een kam.'),
       S('streken.randKrimp', 'Krimp bij randen', 0, 24, 0.5, 'Hoe klein halen worden vlak bij een contour. Hoger houdt kleine dingen — zoals Caek — herkenbaar.'),
+      S('streken.krimpBodem', 'Bodem onder de krimp', 0.1, 1, 0.02, 'Hoe klein een haal maximaal mag worden. Te laag en de krimp knijpt ook in de lucht; dan doet de streeklengte niets meer.'),
       S('streken.anisotropie', 'Volgt het veld', 0, 1, 0.01, 'Langere halen waar de richting eenduidig is, kortere waar het rommelig is.'),
       S('streken.basisHoogte', 'Onderschildering', 0, 1, 0.01, 'Dikte van de laag onder de halen. Voorkomt gaten.'),
+    ],
+  },
+  {
+    groep: 'Kleur per haal',
+    open: true,
+    items: [
+      S('streken.tintRuis', 'Tintvariatie', 0, 0.2, 0.002, 'Verschil in tint tussen naburige halen. Zonder dit leest een vlak als plastic.'),
+      S('streken.waardeRuis', 'Helderheidsvariatie', 0, 1, 0.01),
+      S('streken.kleurSpreiding', 'Kleur van ernaast', 0, 4, 0.05, 'Een haal haalt zijn kleur een stukje naast zichzelf op, zodat buren verschillen.'),
+      S('streken.vonken', 'Complementaire vonken', 0, 1, 0.02, 'De oranje spikkels in het blauw. Sparen: te veel wordt confetti.'),
+      S('streken.wervel', 'Wervels in vlakke vlakken', 0, 1, 0.02, 'Waar de scene vlak is zegt het flowveld niets; dit vult de lucht met krullen.'),
+      S('streken.wervelSchaal', 'Wervelgrootte', 0.5, 10, 0.1, 'Lager = grotere, tragere krullen.'),
     ],
   },
   {
@@ -56,6 +69,7 @@ export const REGELAARS = [
     groep: 'Kleur',
     items: [
       S('warmte', 'Split-toning', 0, 1.5, 0.02, 'Blauw in de schaduwen, goud in het licht. Het UWV-palet.'),
+      S('schaduwKleur', 'Kleur in de schaduw', 0, 0.3, 0.005, 'Houdt de diepste plekken violet in plaats van dood zwart.'),
       S('belichting', 'Belichting', 0.4, 2.2, 0.02),
       S('vignet', 'Vignet', 0, 1.2, 0.02),
     ],
@@ -189,9 +203,16 @@ export function alsJs(stijl) {
     hoogte: ${getal(stijl.streken.hoogte)},
     hoekRuis: ${getal(stijl.streken.hoekRuis)},
     randKrimp: ${getal(stijl.streken.randKrimp)},
+    krimpBodem: ${getal(stijl.streken.krimpBodem)},
     anisotropie: ${getal(stijl.streken.anisotropie)},
     basisHoogte: ${getal(stijl.streken.basisHoogte)},
     maxPerLaag: ${stijl.streken.maxPerLaag},
+    tintRuis: ${getal(stijl.streken.tintRuis)},
+    waardeRuis: ${getal(stijl.streken.waardeRuis)},
+    kleurSpreiding: ${getal(stijl.streken.kleurSpreiding)},
+    vonken: ${getal(stijl.streken.vonken)},
+    wervel: ${getal(stijl.streken.wervel)},
+    wervelSchaal: ${getal(stijl.streken.wervelSchaal)},
     lagen: [
 ${lagen}
     ],

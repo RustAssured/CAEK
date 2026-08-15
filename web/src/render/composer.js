@@ -15,8 +15,8 @@ import { Streken } from './streken.js';
 /** Voorinstellingen. `renderSchaal` is verreweg de grootste knop op snelheid.
  *  `streken` zet de geometrie-penselen aan; die kosten vooral fillrate. */
 export const KWALITEIT = {
-  hoog:   { renderSchaal: 0.88, straal: 5.0, licStappen: 0, impasto: 0.78, tensorDeling: 2, streken: true },
-  midden: { renderSchaal: 0.74, straal: 3.6, licStappen: 0, impasto: 0.62, tensorDeling: 2, streken: true },
+  hoog:   { renderSchaal: 0.88, straal: 5.0, licStappen: 0, impasto: 1.35, tensorDeling: 2, streken: true },
+  midden: { renderSchaal: 0.74, straal: 3.6, licStappen: 0, impasto: 1.10, tensorDeling: 2, streken: true },
   laag:   { renderSchaal: 0.62, straal: 3.0, licStappen: 4, impasto: 0.50, tensorDeling: 2, streken: false },
   uit:    { renderSchaal: 1.00, straal: 0.0, licStappen: 0, impasto: 0.00, tensorDeling: 4, streken: false },
 };
@@ -28,6 +28,7 @@ export const STIJL = {
   scherpte: 8.0,    // q: hoe hard de scherpste sector wint
   korrel: 0.105,    // borstelharen in het reliëf
   warmte: 0.55,     // blauw/oranje split-toning
+  schaduwKleur: 0.07,  // kleur in de diepste schaduwen; zonder dit lopen ze dood op zwart
   vignet: 0.42,
   belichting: 1.06,
 
@@ -36,20 +37,36 @@ export const STIJL = {
     haren: 0.75,         // hoe sterk losse borstelharen doorkomen
     hoogte: 1.0,         // dikte van de verf, voedt het impasto
     hoekRuis: 0.5,       // hoeveel een haal van het flowveld mag afwijken
-    randKrimp: 9.0,      // kleiner worden bij sterke randen; houdt silhouetten heel
+    randKrimp: 6.0,      // kleiner worden bij sterke randen; houdt silhouetten heel
+    krimpBodem: 0.42,    // hoe klein een haal maximaal mag worden — zonder bodem
+                         // knijpt de krimp ook in de lucht en wordt lengte inert
     anisotropie: 0.7,    // lengte volgt de eenduidigheid van het veld
     basisHoogte: 0.3,    // hoogte van de onderschildering
     maxPerLaag: 32000,   // bovengrens per laag; het lab mag hem opzoeken
+
+    // Kleur per haal. Eén egale kleur per vlak leest als plastic; Van Gogh
+    // legt naast elkaar liggende halen in verschillende tinten neer.
+    tintRuis: 0.035,     // tintverschil tussen naburige halen
+    waardeRuis: 0.28,    // helderheidsverschil
+    kleurSpreiding: 1.0, // hoe ver een haal zijn kleur naast zichzelf ophaalt
+    vonken: 0.12,        // spaarzame complementaire halen; op 0,6 wordt het confetti
+
+    // Waar de scene vlak is (lucht) zegt de tensor niets. Dan een wervel.
+    wervel: 0.85,
+    wervelSchaal: 3.2,
 
     // Maten zijn fracties van de renderhoogte, niet pixels: anders ziet
     // dezelfde instelling er op een 4K-scherm heel anders uit dan op een
     // laptop. Grof eerst, dan detail — zoals je ook echt zou schilderen.
     // `detail` = hoe sterk een laag zich beperkt tot plekken waar iets te
     // zien is. De grondlaag ligt overal, het fijne penseel alleen op vormen.
+    // Het lab kijkt van verder weg dan de gamecamera; wat daar mooi grof is,
+    // is in het spel te grof. Dit is het compromis tot streekgrootte met de
+    // diepte kan meeschalen (zie "Wat er nog niet in zit").
     lagen: [
-      { lengte: 0.052, breedte: 0.018, dichtheid: 1.4, detail: 0 },
-      { lengte: 0.024, breedte: 0.0078, dichtheid: 1.5, detail: 0.55 },
-      { lengte: 0.011, breedte: 0.0034, dichtheid: 1.3, detail: 0.95 },
+      { lengte: 0.060, breedte: 0.020, dichtheid: 1.4, detail: 0 },
+      { lengte: 0.028, breedte: 0.0092, dichtheid: 1.5, detail: 0.55 },
+      { lengte: 0.011, breedte: 0.0034, dichtheid: 1.1, detail: 0.95 },
     ],
   },
 };
@@ -140,6 +157,7 @@ export class Schilder {
       uImpasto: { value: STIJL.impasto },
       uKorrel: { value: STIJL.korrel },
       uWarmte: { value: STIJL.warmte },
+      uSchaduwKleur: { value: STIJL.schaduwKleur },
       uVignet: { value: STIJL.vignet },
       uBelichting: { value: STIJL.belichting },
       uSuper: { value: 0 },

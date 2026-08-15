@@ -188,6 +188,38 @@ De proefopstelling bevat met opzet van elk materiaal iets — glad, gestreept,
 gloeiend, donker, egale kleurvlakken, een karakter met een textuur en veel
 lucht. Een stijl die op één type oppervlak mooi is, is nog geen stijl.
 
+### De stijlzoeker
+
+`tools/stijlzoeker/` draait het lab als renderbank en laat het werk beoordelen
+in plaats van het met de hand te tunen.
+
+```bash
+npx http-server web -p 8712 -c-1 &                          # het lab moet draaien
+python3 tools/stijlzoeker/kandidaten.py 16 > kandidaten.json
+node   tools/stijlzoeker/render.mjs kandidaten.json renders/ totaal,karakter 800 450
+python3 tools/stijlzoeker/contactvel.py renders/ totaal vel.png
+```
+
+- **`kandidaten.py`** maakt twee soorten kandidaten: *ablaties* (dezelfde stijl
+  met één ding uitgezet — die zijn er niet om te winnen maar om te laten zien
+  wát een ingreep oplevert) en *varianten* uit een Latijns vierkant, zodat elke
+  parameter elke band één keer krijgt zonder een volledig raster te renderen.
+- **`render.mjs`** opent het lab één keer en rendert alles in één sessie;
+  opstarten kost meer tijd dan honderd renders.
+- **`metrics.py`** meet streekschaal (radiaal spectrum), richtingssamenhang
+  (anisotropieverdeling), kleur, lokale kleurvariatie, reliëf en randen. Met
+  `leer` bouw je een doelprofiel uit referentiebeelden, met `scoor` rangschik
+  je renders daartegen.
+- **`contactvel.py`** zet alle kandidaten in één beeld. Een vision-model geeft
+  onbetrouwbare absolute cijfers maar rangschikt prima — daarvoor moeten ze wel
+  naast elkaar staan.
+
+Waarom niet gewoon een model een cijfer laten geven? Omdat dat ruist. Een model
+ziet betrouwbaar dat streken "te klein" zijn, maar niet het verschil tussen
+0,048 en 0,052 — en een zoeklus die op ruis stuurt jaagt uren achter niets aan.
+De getallen doen het fijne zoekwerk, een beoordelaar doet de vraag die getallen
+niet kunnen beantwoorden: leest dit als Van Gogh, en nog steeds als CAEK.
+
 ### Stijl finetunen
 
 Draai aan `STIJL` in `render/composer.js` (of gebruik het lab en plak het

@@ -45,6 +45,23 @@ float fbm(vec2 p) {
 }
 `;
 
+/* Tint verschuiven per streek vraagt om HSV; in RGB wordt elke verschuiving
+ * ook een helderheidsverschuiving en dan verkleurt het naar modder. */
+const kleurChunk = /* glsl */ `
+vec3 naarHsv(vec3 c) {
+  vec4 K = vec4(0.0, -1.0 / 3.0, 2.0 / 3.0, -1.0);
+  vec4 p = mix(vec4(c.bg, K.wz), vec4(c.gb, K.xy), step(c.b, c.g));
+  vec4 q = mix(vec4(p.xyw, c.r), vec4(c.r, p.yzx), step(p.x, c.r));
+  float d = q.x - min(q.w, q.y);
+  return vec3(abs(q.z + (q.w - q.y) / (6.0 * d + 1e-10)), d / (q.x + 1e-10), q.x);
+}
+vec3 naarRgb(vec3 c) {
+  vec4 K = vec4(1.0, 2.0 / 3.0, 1.0 / 3.0, 3.0);
+  vec3 p = abs(fract(c.xxx + K.xyz) * 6.0 - K.www);
+  return c.z * mix(K.xxx, clamp(p - K.xxx, 0.0, 1.0), c.y);
+}
+`;
+
 /* ------------------------------------------------------------------ *
  * De Sterrennacht-lucht: domain-warped fbm met wervels rond drie sterren
  * ------------------------------------------------------------------ */
@@ -86,9 +103,9 @@ void main() {
   float veld = fbm(q * 4.6 + w * 1.9);
   float veld2 = fbm(q * 9.0 - w * 1.2 + 4.0);
 
-  vec3 diep = vec3(0.020, 0.055, 0.210);
-  vec3 blauw = vec3(0.055, 0.170, 0.520);
-  vec3 helder = vec3(0.200, 0.420, 0.880);
+  vec3 diep = vec3(0.022, 0.038, 0.205);
+  vec3 blauw = vec3(0.045, 0.140, 0.560);
+  vec3 helder = vec3(0.130, 0.310, 0.900);
   vec3 kleur = mix(diep, blauw, smoothstep(0.28, 0.72, veld));
   kleur = mix(kleur, helder, smoothstep(0.52, 0.92, veld) * 0.75);
 
@@ -314,9 +331,16 @@ uniform vec2 uVerschuiving;   // camerapan, zodat streken aan de wereld plakken
 uniform float uLengte;
 uniform float uBreedte;
 uniform float uHoekRuis;      // hoeveel streken van het flowveld af mogen wijken
-uniform float uRandKrimp;     // korter worden bij sterke randen
+uniform float uRandKrimp;     // kleiner worden bij sterke randen
+uniform float uKrimpBodem;    // hoe klein een haal maximaal mag worden
 uniform float uAnisotropie;   // lengte volgt de anisotropie van het veld
 uniform float uDetail;        // 1 = deze laag verschijnt alleen waar detail zit
+uniform float uTintRuis;      // tintverschil tussen naburige halen
+uniform float uWaardeRuis;    // helderheidsverschil tussen naburige halen
+uniform float uKleurSpreiding;// hoe ver een haal zijn kleur naast zichzelf ophaalt
+uniform float uVonken;        // losse halen in de complementaire kleur
+uniform float uWervel;        // procedurele wervels waar het veld niets zegt
+uniform float uWervelSchaal;
 
 varying vec3 vKleur;
 varying vec2 vQuad;
@@ -324,6 +348,23 @@ varying float vBorstel;
 varying float vWeging;
 
 ${flowChunk}
+${ruis}
+${kleurChunk}
+
+/* Waar de scene vlak is (lucht) zegt de structuurtensor niets en krijgen alle
+ * halen dezelfde saaie richting. Van Gogh vult zulke vlakken juist met
+ * wervels. Dit is de curl van een fbm-veld: doorlopend, niet-herhalend, en
+ * precies het soort krul dat je in de lucht wilt. */
+vec2 wervelRichting(vec2 uv) {
+  float e = 0.0035;
+  vec2 p = uv * uWervelSchaal;
+  float a = fbm(p);
+  float dx = fbm(p + vec2(e * uWervelSchaal, 0.0)) - a;
+  float dy = fbm(p + vec2(0.0, e * uWervelSchaal)) - a;
+  vec2 c = vec2(dy, -dx);
+  float l = length(c);
+  return l > 1e-6 ? c / l : vec2(1.0, 0.0);
+}
 
 void main() {
   vec2 anker = fract(aAnker + uVerschuiving);
@@ -334,7 +375,35 @@ void main() {
   float anis = stroom.z;
   float randKracht = sqrt(max(stroom.w, 0.0));
 
-  vKleur = texture2D(uKleur, anker).rgb;
+  // In vlakke gebieden het flowveld vervangen door een wervel; op vormen
+  // blijft de tensor de baas, want daar zegt hij wél iets.
+  vec2 krul = wervelRichting(anker + uVerschuiving);
+  float vlak = 1.0 - smoothstep(0.02, 0.30, anis);
+  richting = normalize(mix(richting, krul, uWervel * vlak) + 1e-6);
+
+  // Kleur niet exact onder de haal ophalen maar een stukje ernaast: naburige
+  // halen pakken zo naburige kleuren op, en dat is precies wat een egaal vlak
+  // levendig maakt.
+  vec2 loodrecht = vec2(-richting.y, richting.x);
+  vec2 monster = anker + loodrecht * (aWillekeur.y - 0.5) * uKleurSpreiding * 0.02;
+  vec3 kleur = texture2D(uKleur, clamp(monster, 0.001, 0.999)).rgb;
+
+  // Eén egale kleur per vlak leest als plastic. Verschuif tint en helderheid
+  // per haal, en gooi er af en toe een complementaire vonk tussen — dat zijn
+  // de oranje spikkels in de blauwe lucht.
+  vec3 hsv = naarHsv(clamp(kleur, 0.0, 1.0));
+  hsv.x = fract(hsv.x + (aWillekeur.x - 0.5) * uTintRuis);
+  hsv.y = clamp(hsv.y * (1.0 + (aWillekeur.z - 0.5) * 0.5), 0.0, 1.0);
+  // Deels vermenigvuldigen, deels optellen. Puur vermenigvuldigen laat
+  // donkere vlakken egaal: 0 maal wat dan ook blijft 0, dus in de schaduw
+  // waren er wel halen maar zag je ze niet.
+  hsv.z = max(hsv.z * (1.0 + (aWillekeur.w - 0.5) * uWaardeRuis)
+              + (aWillekeur.w - 0.5) * uWaardeRuis * 0.16, 0.0);
+  float vonk = step(0.94, aWillekeur.z) * uVonken;
+  hsv.x = fract(hsv.x + vonk * 0.46);
+  hsv.y = clamp(hsv.y + vonk * 0.35, 0.0, 1.0);
+  hsv.z *= 1.0 + vonk * 0.35;
+  vKleur = naarRgb(hsv);
 
   // Een streek mag best een beetje eigenwijs zijn; perfect uitgelijnd leest
   // als een kam in plaats van als een hand.
@@ -342,10 +411,12 @@ void main() {
   float ch = cos(hoek), sh = sin(hoek);
   richting = mat2(ch, -sh, sh, ch) * richting;
 
-  // Kleiner bij randen, zodat een streek niet ver over een silhouet heen
-  // smeert en een klein karakter niet in twee halen verdwijnt. De lengte
-  // krimpt harder dan de breedte: dat houdt de haal een haal.
-  float krimp = 1.0 / (1.0 + randKracht * uRandKrimp);
+  // Kleiner bij randen, zodat een klein karakter niet in twee halen verdwijnt.
+  // Met een bodem eronder: zonder die bodem knijpt deze term ook in de lucht,
+  // waar de procedurele wolken genoeg gradiënt hebben om hem te laten
+  // afgaan — en dan wordt de ingestelde streeklengte betekenisloos en steekt
+  // geen enkele haal ooit over een silhouet heen.
+  float krimp = max(uKrimpBodem, 1.0 / (1.0 + randKracht * uRandKrimp));
   float lengte = uLengte * (0.55 + 0.9 * aWillekeur.x) * mix(1.0, 0.45 + anis, uAnisotropie) * krimp;
   float breedte = uBreedte * (0.65 + 0.7 * aWillekeur.y) * mix(1.0, krimp, 0.65);
 
@@ -442,6 +513,7 @@ uniform float uLic;
 uniform float uImpasto;
 uniform float uKorrel;
 uniform float uWarmte;
+uniform float uSchaduwKleur;
 uniform float uVignet;
 uniform float uBelichting;
 uniform float uSuper;
@@ -556,7 +628,11 @@ void main() {
   float l = luminantie(kleur);
   vec3 schaduwtint = vec3(0.10, 0.26, 0.72);       // UWV-blauw in het donker
   vec3 lichttint = vec3(1.00, 0.74, 0.34);         // goudgeel in het licht
-  kleur = mix(kleur, kleur * schaduwtint * 2.0, uWarmte * (1.0 - smoothstep(0.0, 0.55, l)));
+  float donker = 1.0 - smoothstep(0.0, 0.55, l);
+  kleur = mix(kleur, kleur * schaduwtint * 2.0, uWarmte * donker);
+  // Puur vermenigvuldigen duwt de donkerste plekken naar bijna-zwart; een
+  // violette bodem houdt er kleur in, zoals in de referenties.
+  kleur += vec3(0.16, 0.09, 0.34) * donker * donker * uSchaduwKleur;
   kleur = mix(kleur, kleur * lichttint * 1.28, uWarmte * smoothstep(0.42, 1.0, l));
   kleur = mix(vec3(l), kleur, 1.18);               // net iets meer verzadiging
 

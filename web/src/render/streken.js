@@ -107,11 +107,18 @@ export class Streken {
         uBreedte: { value: 1 },
         uHoekRuis: { value: this.stijl.hoekRuis },
         uRandKrimp: { value: this.stijl.randKrimp },
+        uKrimpBodem: { value: this.stijl.krimpBodem },
         uAnisotropie: { value: this.stijl.anisotropie },
         uDetail: { value: config.detail ?? 0 },
         uDekking: { value: this.stijl.dekking },
         uHaren: { value: this.stijl.haren },
         uHoogte: { value: this.stijl.hoogte },
+        uTintRuis: { value: this.stijl.tintRuis },
+        uWaardeRuis: { value: this.stijl.waardeRuis },
+        uKleurSpreiding: { value: this.stijl.kleurSpreiding },
+        uVonken: { value: this.stijl.vonken },
+        uWervel: { value: this.stijl.wervel },
+        uWervelSchaal: { value: this.stijl.wervelSchaal },
       },
     });
 
@@ -213,11 +220,18 @@ export class Streken {
       u.uBreedte.value = maat.breedte;
       u.uHoekRuis.value = this.stijl.hoekRuis;
       u.uRandKrimp.value = this.stijl.randKrimp;
+      u.uKrimpBodem.value = this.stijl.krimpBodem;
       u.uAnisotropie.value = this.stijl.anisotropie;
       u.uDetail.value = c.detail ?? 0;
       u.uDekking.value = this.stijl.dekking;
       u.uHaren.value = this.stijl.haren;
       u.uHoogte.value = this.stijl.hoogte;
+      u.uTintRuis.value = this.stijl.tintRuis;
+      u.uWaardeRuis.value = this.stijl.waardeRuis;
+      u.uKleurSpreiding.value = this.stijl.kleurSpreiding;
+      u.uVonken.value = this.stijl.vonken;
+      u.uWervel.value = this.stijl.wervel;
+      u.uWervelSchaal.value = this.stijl.wervelSchaal;
     });
 
     if (maatGewijzigd) this.vulAnkers();

@@ -71,7 +71,9 @@ function maakPlaceholder() {
   const gezicht = vlak(0.8, 0.8, new THREE.MeshBasicMaterial({
     map: gezichtTextuur('blij'), transparent: true, depthWrite: false,
   }));
-  gezicht.position.set(0, 1.12, 0.5);
+  // Vóór de bol uit: het glazuur heeft straal 0,56 rond y=1,06, dus op z=0,5
+  // zat het gezicht ín haar hoofd en zag je alleen een roze blob.
+  gezicht.position.set(0, 1.10, 0.66);
   gezicht.renderOrder = 4;
   groep.add(gezicht);
   groep.userData.gezicht = gezicht;

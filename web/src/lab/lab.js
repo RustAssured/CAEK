@@ -399,7 +399,50 @@ async function begin() {
   }
   requestAnimationFrame(lus);
 
-  window.LAB = { schilder, scene, camera, STIJL, KWALITEIT, staat };
+  /* Van buitenaf aanstuurbaar, zodat tools/stijlzoeker het lab kan gebruiken
+   * als renderbank: stijl erin, plaatje eruit, honderden keren achter elkaar. */
+  function pasStijlToe(nieuw) {
+    const samenvoegen = (doel, bron) => {
+      for (const [k, v] of Object.entries(bron)) {
+        if (Array.isArray(v)) {
+          doel[k] = doel[k] || [];
+          v.forEach((item, i) => {
+            doel[k][i] = typeof item === 'object' ? Object.assign(doel[k][i] || {}, item) : item;
+          });
+        } else if (v && typeof v === 'object') {
+          doel[k] = doel[k] || {};
+          samenvoegen(doel[k], v);
+        } else {
+          doel[k] = v;
+        }
+      }
+    };
+    samenvoegen(STIJL, nieuw);
+    schilder.kuwahara.materiaal.uniforms.uAlfa.value = STIJL.alfa;
+    schilder.kuwahara.materiaal.uniforms.uScherpte.value = STIJL.scherpte;
+    const f = schilder.finale.materiaal.uniforms;
+    f.uKorrel.value = STIJL.korrel;
+    f.uWarmte.value = STIJL.warmte;
+    f.uVignet.value = STIJL.vignet;
+    f.uBelichting.value = STIJL.belichting;
+    if (nieuw.impasto !== undefined) f.uImpasto.value = nieuw.impasto;
+    if (nieuw.straal !== undefined) schilder.kuwahara.materiaal.uniforms.uStraal.value = nieuw.straal;
+    schilder.streken.ververs();
+  }
+
+  function zetCamera(naam) {
+    const u = UITSNEDES[naam] || UITSNEDES.totaal;
+    camera.position.set(u.x, u.y, u.z);
+    staat.doelPositie.copy(camera.position);
+    camera.lookAt(camera.position.x, camera.position.y - 1.0, 0);
+  }
+
+  window.LAB = {
+    schilder, scene, camera, STIJL, KWALITEIT, staat,
+    pasStijlToe, zetCamera, uitsnedes: Object.keys(UITSNEDES),
+    // één frame op commando, los van de animatielus
+    renderNu(tijd = 12.0) { schilder.render(scene, camera, tijd); },
+  };
 }
 
 begin().catch((e) => {
