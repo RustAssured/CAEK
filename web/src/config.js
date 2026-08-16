@@ -49,6 +49,47 @@ export const SCHAKELS = {
 };
 
 /* ------------------------------------------------------------------ *
+ * De karakters als getekende sprites
+ * ------------------------------------------------------------------ */
+
+/* Eén PNG per animatie, frames naast elkaar in een horizontale strip. Het
+ * getal achter de laatste underscore is het aantal frames -- dat zet
+ * tools/sprites.py er zelf in. Ontbreekt een animatie, dan leent de sprite er
+ * een die er wél is; ontbreekt alles, dan komt er een plaatshouder.
+ *
+ * `hoogte` is de wereldhoogte van het karakter, niet de pixelhoogte. */
+export const SPRITE = {
+  map: './assets/sprites/',
+  hoogte: NATUURKUNDE.spelerHoogte,
+  karakters: {
+    caek: {
+      hoogte: NATUURKUNDE.spelerHoogte,
+      animaties: {
+        idle: 'caek_idle_1.png',
+        lopen: 'caek_lopen_10.png',
+        rennen: 'caek_rennen_10.png',
+        springen: 'caek_springen_2.png',
+      },
+    },
+    supercaek: {
+      hoogte: NATUURKUNDE.spelerHoogte * 1.22,
+      animaties: {
+        idle: 'supercaek_idle_1.png',
+        lopen: 'supercaek_lopen_6.png',
+        rennen: 'supercaek_rennen_6.png',
+      },
+    },
+    cupcaek: {
+      hoogte: NATUURKUNDE.spelerHoogte * 0.89,
+      animaties: {
+        idle: 'cupcaek_idle_1.png',
+        lopen: 'cupcaek_lopen_6.png',
+      },
+    },
+  },
+};
+
+/* ------------------------------------------------------------------ *
  * Het Doelenwiel — de ruggengraat
  * ------------------------------------------------------------------ */
 
