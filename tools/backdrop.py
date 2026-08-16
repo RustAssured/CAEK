@@ -107,13 +107,28 @@ def main():
     ap.add_argument("--breedte", type=int, default=2048, help="maximale breedte van de uitvoer")
     ap.add_argument("--kwaliteit", type=int, default=90)
     ap.add_argument("--lagen", default=",".join(LAGEN))
+    ap.add_argument("--bestand", help="losse plaat verwerken in plaats van de vaste lagen")
+    ap.add_argument("--naam", help="uitvoernaam bij --bestand")
+    ap.add_argument("--uit", help="uitvoermap (standaard web/assets/achtergrond)")
     args = ap.parse_args()
 
-    os.makedirs(UIT, exist_ok=True)
-    manifest = {}
+    uitmap = os.path.join(REPO, args.uit) if args.uit else UIT
+    os.makedirs(uitmap, exist_ok=True)
 
-    for naam in [n.strip() for n in args.lagen.split(",") if n.strip()]:
-        bron = os.path.join(BRON, f"{naam}.png")
+    manifestpad = os.path.join(uitmap, "manifest.json")
+    manifest = {}
+    if os.path.exists(manifestpad):
+        with open(manifestpad, encoding="utf-8") as f:
+            manifest = json.load(f)
+
+    if args.bestand:
+        opdrachten = [(args.naam or os.path.splitext(os.path.basename(args.bestand))[0],
+                       os.path.join(REPO, args.bestand))]
+    else:
+        opdrachten = [(n.strip(), os.path.join(BRON, f"{n.strip()}.png"))
+                      for n in args.lagen.split(",") if n.strip()]
+
+    for naam, bron in opdrachten:
         if not os.path.exists(bron):
             print(f"  {naam}: geen {os.path.relpath(bron, REPO)} gevonden, overgeslagen")
             continue
@@ -139,14 +154,14 @@ def main():
             vel = vel.resize((args.breedte, h), Image.LANCZOS)
 
         bestand = f"{naam}.webp"
-        vel.save(os.path.join(UIT, bestand), quality=args.kwaliteit, method=6)
-        kb = os.path.getsize(os.path.join(UIT, bestand)) / 1024
+        vel.save(os.path.join(uitmap, bestand), quality=args.kwaliteit, method=6)
+        kb = os.path.getsize(os.path.join(uitmap, bestand)) / 1024
         print(f"  -> {bestand}  {vel.width}x{vel.height}  {kb:.0f} kB")
         manifest[naam] = {"bestand": bestand, "breedte": vel.width, "hoogte": vel.height}
 
-    with open(os.path.join(UIT, "manifest.json"), "w", encoding="utf-8") as f:
+    with open(manifestpad, "w", encoding="utf-8") as f:
         json.dump(manifest, f, indent=2)
-    print(f"\nmanifest: {os.path.relpath(os.path.join(UIT, 'manifest.json'), REPO)}")
+    print(f"\nmanifest: {os.path.relpath(manifestpad, REPO)}")
     return 0
 
 

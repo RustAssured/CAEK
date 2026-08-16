@@ -58,7 +58,7 @@ export class Level {
 
   /** Zwevend platform. */
   platform(x, y, breedte = 4, kleur = PALET.steen) {
-    const p = props.platform(breedte, 0.9, kleur);
+    const p = props.platform(breedte, 0.9, kleur, { zwevend: true });
     p.position.set(x, y, 0);
     this.scene.add(p);
     this.voegVloer(x - breedte / 2, x + breedte / 2, y);

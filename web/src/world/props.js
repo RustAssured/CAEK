@@ -47,8 +47,30 @@ export function vlak(b, h, materiaal) {
  * Grond en platforms
  * ------------------------------------------------------------------ */
 
-/** Een looppad. Geeft de mesh terug; de collider maakt level.js zelf. */
-export function platform(breedte, dikte = 0.9, kleur = PALET.steen, { top = PALET.blauwLicht } = {}) {
+/* De geschilderde vloer. Wordt vóór het bouwen ingeladen (zie world/vloer.js);
+ * is hij er niet, dan valt platform() terug op de oude opbouw uit blokjes. */
+let vloerTextuur = null;
+export function zetVloerTextuur(textuur) { vloerTextuur = textuur; }
+
+/** Hoeveel wereldeenheden één herhaling van de vloerplaat beslaat. */
+const VLOER_TEGEL = 9.0;
+/** Waar in de plaat de voorrand van het loopvlak zit, van boven gemeten. */
+const VLOER_RAND = 0.68;
+
+/**
+ * Een looppad. Geeft de mesh terug; de collider maakt level.js zelf.
+ *
+ * Met de geschilderde plaat is dit één staand vlak in plaats van een stapel
+ * blokjes. Dat mag omdat de plaat al mét perspectief geschilderd is: het
+ * loopvlak wijkt naar achteren, daaronder zit de zijkant van de stoep. Precies
+ * hoe de camera het zou zien, dus een plat vlak volstaat -- en het scheelt per
+ * platform tientallen meshes.
+ *
+ * Het vlak staat net achter het spelvlak, zodat de karakters op de voorrand
+ * lijken te lopen in plaats van erachter te verdwijnen.
+ */
+export function platform(breedte, dikte = 0.9, kleur = PALET.steen, { top = PALET.blauwLicht, zwevend = false } = {}) {
+  if (vloerTextuur) return geschilderdPlatform(breedte, zwevend);
   const groep = new THREE.Group();
   const romp = doos(breedte, dikte, 4.2, kleur, { plat: true });
   romp.position.y = -dikte / 2;
@@ -66,6 +88,40 @@ export function platform(breedte, dikte = 0.9, kleur = PALET.steen, { top = PALE
     s.position.set(-breedte / 2 + (i + 0.5) * (breedte / stenen), 0.04, 1.2 + (i % 3) * 0.6 - 0.6);
     groep.add(s);
   }
+  return groep;
+}
+
+/* Een zwevend platform is geen stuk straat maar een plank in de lucht: daar
+ * hoort geen halve stoep achter weg te wijken. Van de plaat wordt dan alleen
+ * de onderste strook gebruikt -- de voorste rij stenen plus de zijkant. */
+const ZWEVEND_DEEL = 0.56;
+
+function geschilderdPlatform(breedte, zwevend = false) {
+  const groep = new THREE.Group();
+
+  const deel = zwevend ? ZWEVEND_DEEL : 1;
+  const hoogte = (VLOER_TEGEL / 2) * deel;
+  const rand = zwevend ? (VLOER_RAND - (1 - deel)) / deel : VLOER_RAND;
+
+  const textuur = vloerTextuur.clone();
+  textuur.needsUpdate = true;
+  textuur.wrapS = THREE.RepeatWrapping;
+  textuur.wrapT = THREE.ClampToEdgeWrapping;
+  textuur.repeat.set(breedte / VLOER_TEGEL, deel);
+  // elk platform een eigen stukje straat, anders herhaalt het zichtbaar
+  textuur.offset.set((breedte * 0.37) % 1, 0);
+
+  const materiaal = new THREE.MeshBasicMaterial({ map: textuur, toneMapped: false });
+  // Ook deze plaat is al olieverf; er nog een laag Kuwahara overheen leggen
+  // maakt er pap van. Een klein beetje mag, zodat hij niet los komt te staan
+  // van de props die er wél doorheen gaan.
+  maskeer(materiaal, 0.10);
+  const vlak = new THREE.Mesh(VLAK, materiaal);
+  vlak.scale.set(breedte, hoogte, 1);
+  // de voorrand van het loopvlak op y = 0 leggen
+  vlak.position.set(0, hoogte * (rand - 0.5), zwevend ? -0.2 : -0.45);
+  groep.add(vlak);
+  groep.userData.vloervlak = vlak;
   return groep;
 }
 
