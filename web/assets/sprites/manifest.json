@@ -1,79 +1,79 @@
 {
-  "cupcaek": {
-    "lopen": {
-      "bestand": "cupcaek_lopen_7.webp",
-      "frames": 7,
-      "breedte": 211,
-      "hoogte": 288
-    },
-    "idle": {
-      "bestand": "cupcaek_idle_7.webp",
-      "frames": 7,
-      "breedte": 195,
-      "hoogte": 288
-    },
-    "springen": {
-      "bestand": "cupcaek_springen_7.webp",
-      "frames": 7,
-      "breedte": 274,
-      "hoogte": 288
-    },
-    "juichen": {
-      "bestand": "cupcaek_juichen_7.webp",
-      "frames": 7,
-      "breedte": 276,
-      "hoogte": 288
-    }
-  },
-  "supercaek": {
-    "lopen": {
-      "bestand": "supercaek_lopen_10.webp",
-      "frames": 10,
-      "breedte": 223,
-      "hoogte": 288
-    },
-    "idle": {
-      "bestand": "supercaek_idle_8.webp",
-      "frames": 8,
-      "breedte": 197,
-      "hoogte": 288
-    },
-    "springen": {
-      "bestand": "supercaek_springen_8.webp",
-      "frames": 8,
-      "breedte": 262,
-      "hoogte": 288
-    },
-    "juichen": {
-      "bestand": "supercaek_juichen_8.webp",
-      "frames": 8,
-      "breedte": 233,
-      "hoogte": 288
-    }
-  },
   "caek": {
     "lopen": {
       "bestand": "caek_lopen_10.webp",
       "frames": 10,
-      "breedte": 217,
+      "breedte": 213,
       "hoogte": 288
     },
     "idle": {
       "bestand": "caek_idle_8.webp",
       "frames": 8,
-      "breedte": 203,
+      "breedte": 205,
       "hoogte": 288
     },
     "springen": {
       "bestand": "caek_springen_8.webp",
       "frames": 8,
-      "breedte": 321,
+      "breedte": 227,
       "hoogte": 288
     },
     "juichen": {
       "bestand": "caek_juichen_8.webp",
       "frames": 8,
-      "breedte": 274,
+      "breedte": 244,
+      "hoogte": 288
+    }
+  },
+  "cupcaek": {
+    "lopen": {
+      "bestand": "cupcaek_lopen_8.webp",
+      "frames": 8,
+      "breedte": 207,
+      "hoogte": 288
+    },
+    "idle": {
+      "bestand": "cupcaek_idle_8.webp",
+      "frames": 8,
+      "breedte": 211,
+      "hoogte": 288
+    },
+    "springen": {
+      "bestand": "cupcaek_springen_8.webp",
+      "frames": 8,
+      "breedte": 230,
+      "hoogte": 288
+    },
+    "juichen": {
+      "bestand": "cupcaek_juichen_8.webp",
+      "frames": 8,
+      "breedte": 221,
+      "hoogte": 288
+    }
+  },
+  "supercaek": {
+    "lopen": {
+      "bestand": "supercaek_lopen_8.webp",
+      "frames": 8,
+      "breedte": 230,
+      "hoogte": 288
+    },
+    "idle": {
+      "bestand": "supercaek_idle_8.webp",
+      "frames": 8,
+      "breedte": 202,
+      "hoogte": 288
+    },
+    "springen": {
+      "bestand": "supercaek_springen_8.webp",
+      "frames": 8,
+      "breedte": 215,
+      "hoogte": 288
+    },
+    "juichen": {
+      "bestand": "supercaek_juichen_8.webp",
+      "frames": 8,
+      "breedte": 212,
       "hoogte": 288
     }
   }

@@ -198,44 +198,74 @@ def banden(profiel, minimum_gat, minimum_maat):
     return [s for s in samen if s[1] - s[0] >= minimum_maat]
 
 
-def vind_rijen(afbeelding):
-    a = np.array(afbeelding)[..., 3] > 24
-    return banden(a.sum(axis=1), minimum_gat=14, minimum_maat=70)
-
-
-def vind_kolommen(rijbeeld):
-    """
-    Kolommen zoeken, en te brede kolommen alsnog opsplitsen.
-
-    Twee frames die elkaar net raken -- bij Caek doen frame 9 en 10 dat --
-    komen er anders als één plaatje uit, en dan mist er een frame en is er
-    één twee keer zo breed. Een kolom die veel breder is dan de rest wordt
-    daarom doorgeknipt op zijn dunste plek.
-    """
-    profiel = (np.array(rijbeeld)[..., 3] > 24).sum(axis=0)
-    ruw = banden(profiel, minimum_gat=8, minimum_maat=28)
-    if len(ruw) < 2:
-        return ruw
-
-    normaal = float(np.median([x1 - x0 for x0, x1 in ruw]))
+def vind_figuren(afbeelding, minimum=900):
+    """Elke losse figuur op het vel, als (y0, y1, x0, x1)."""
+    massief = np.array(afbeelding)[..., 3] > 24
+    labels, n = ndimage.label(massief)
+    if not n:
+        return []
+    maten = ndimage.sum(massief, labels, range(1, n + 1))
+    dozen = ndimage.find_objects(labels)
     uit = []
-    for x0, x1 in ruw:
+    for i, doos in enumerate(dozen):
+        if doos is None or maten[i] < minimum:
+            continue
+        uit.append((doos[0].start, doos[0].stop, doos[1].start, doos[1].stop))
+    return uit
+
+
+def cluster_rijen(figuren, aantal):
+    """
+    Deel de figuren op in rijen.
+
+    Eerst geprobeerd met een projectie op de y-as, maar op de transparante
+    vellen raakt dat vast: tussen de sprong- en juichrij zit geen witruimte
+    meer -- een figuur die hoog springt overlapt met een figuur eronder die
+    zijn armen omhoog gooit. Losse figuren clusteren op hun middelpunt werkt
+    wel, want binnen een rij liggen die dicht bij elkaar en tussen rijen niet.
+
+    Het aantal rijen komt van buiten (uit --rijen), want dat weet je gewoon.
+    """
+    if not figuren:
+        return []
+    middens = sorted((f[0] + f[1]) / 2 for f in figuren)
+    if aantal <= 1 or len(middens) <= aantal:
+        return [figuren]
+
+    sprongen = sorted(
+        ((middens[i + 1] - middens[i], i) for i in range(len(middens) - 1)),
+        reverse=True,
+    )[: aantal - 1]
+    grenzen = sorted((middens[i] + middens[i + 1]) / 2 for _, i in sprongen)
+
+    groepen = [[] for _ in range(aantal)]
+    for f in figuren:
+        m = (f[0] + f[1]) / 2
+        k = sum(1 for g in grenzen if m > g)
+        groepen[k].append(f)
+    groepen = [g for g in groepen if g]
+    return [sorted(g, key=lambda f: f[2]) for g in groepen]
+
+
+def splits_brede(figuren):
+    """
+    Twee figuren die elkaar raken zijn één samenhangend geheel geworden.
+    Een doos die veel breder is dan de rest wordt daarom opgedeeld.
+    """
+    if len(figuren) < 2:
+        return figuren
+    normaal = float(np.median([f[3] - f[2] for f in figuren]))
+    uit = []
+    for y0, y1, x0, x1 in figuren:
         breedte = x1 - x0
         stukken = max(1, round(breedte / normaal))
         if stukken < 2 or breedte < normaal * 1.5:
-            uit.append([x0, x1])
+            uit.append((y0, y1, x0, x1))
             continue
-        # knip op de dunste plek rond elke verwachte grens
-        grenzen = [x0]
-        for k in range(1, stukken):
-            mik = x0 + round(breedte * k / stukken)
-            speling = max(4, int(normaal * 0.2))
-            a = max(x0 + 4, mik - speling)
-            b = min(x1 - 4, mik + speling)
-            grenzen.append(a + int(np.argmin(profiel[a:b])) if b > a else mik)
-        grenzen.append(x1)
-        for i in range(stukken):
-            uit.append([grenzen[i], grenzen[i + 1]])
+        for k in range(stukken):
+            a = x0 + round(breedte * k / stukken)
+            b = x0 + round(breedte * (k + 1) / stukken)
+            uit.append((y0, y1, a, b))
     return uit
 
 
@@ -313,23 +343,43 @@ def karakter_van(bestandsnaam):
     return re.sub(r"[^a-z0-9]+", "", laag.split(".")[0]) or "onbekend"
 
 
+def al_transparant(vel):
+    """Heeft dit vel al een bruikbaar alfakanaal, of is het een plat plaatje?"""
+    if vel.mode != "RGBA":
+        return False
+    a = np.asarray(vel.getchannel("A"))
+    # een vel met echte transparantie heeft flink wat lege ruimte tussen de
+    # figuren; een plat plaatje dat toevallig RGBA is, heeft die niet
+    return float((a < 8).mean()) > 0.25
+
+
 def verwerk(pad, naam, rijnamen, hoogte, fps, vlekdrempel, formaat, kwaliteit, gatgrens):
     vel = Image.open(pad)
     print(f"\n{os.path.basename(pad)} -> {naam}  ({vel.width}x{vel.height})")
 
-    schoon = snij_achtergrond(vel)
-    schoon, weggegooid = gooi_vlekjes_weg(schoon, vlekdrempel)
-    print(f"  achtergrond weg, {weggegooid} vlekjes opgeruimd (badges, kopjes, stippellijnen)")
+    if al_transparant(vel):
+        # Al uitgesneden aangeleverd. Niets meer aan doen: elke extra
+        # bewerking kan alleen maar kapotmaken wat al klopt.
+        schoon = vel.convert("RGBA")
+        print("  vel is al transparant, achtergrond ongemoeid gelaten")
+    else:
+        schoon = snij_achtergrond(vel)
+        schoon, weggegooid = gooi_vlekjes_weg(schoon, vlekdrempel)
+        print(f"  achtergrond weg, {weggegooid} vlekjes opgeruimd (badges, kopjes, stippellijnen)")
 
-    rijen = vind_rijen(schoon)
-    print(f"  rijen gevonden: {len(rijen)}")
+    figuren = vind_figuren(schoon, vlekdrempel)
+    rijen = cluster_rijen(figuren, len(rijnamen))
+    print(f"  {len(figuren)} figuren gevonden, verdeeld over {len(rijen)} rijen")
 
     resultaat = {}
-    for i, (y0, y1) in enumerate(rijen):
+    for i, groep in enumerate(rijen):
         rijnaam = rijnamen[i] if i < len(rijnamen) else f"rij{i + 1}"
-        rijbeeld = schoon.crop((0, y0, schoon.width, y1))
-        kolommen = vind_kolommen(rijbeeld)
-        frames = [rijbeeld.crop((x0, 0, x1, rijbeeld.height)) for x0, x1 in kolommen]
+        groep = splits_brede(groep)
+        # binnen een rij hebben alle frames dezelfde uitsnede in de hoogte,
+        # anders verspringt de grondlijn tussen frames onderling
+        yb = min(f[0] for f in groep)
+        yo = max(f[1] for f in groep)
+        frames = [schoon.crop((x0, yb, x1, yo)) for _, _, x0, x1 in groep]
         frames = [vul_glimlichten(f, gatgrens) for f in frames if f.getbbox()]
         if not frames:
             continue
@@ -340,8 +390,6 @@ def verwerk(pad, naam, rijnamen, hoogte, fps, vlekdrempel, formaat, kwaliteit, g
             frames = [f.resize((max(1, round(f.width * s)), hoogte), Image.LANCZOS) for f in frames]
 
         os.makedirs(UIT, exist_ok=True)
-        # WebP met alfa: een PNG-strip van tien frames loopt tegen de megabyte
-        # aan, en twaalf van die strips wil je niemand door de firewall sturen.
         bestand = f"{naam}_{rijnaam}_{len(frames)}.{formaat}"
         vell = strip(frames)
         if formaat == "webp":
@@ -377,9 +425,26 @@ def main():
 
     rijnamen = [r.strip() for r in args.rijen.split(",") if r.strip()]
 
-    vellen = args.vel or sorted(
-        os.path.join(BRON, f) for f in os.listdir(BRON) if f.lower().endswith((".png", ".webp", ".jpg"))
-    )
+    if args.vel:
+        vellen = args.vel
+    else:
+        alles = sorted(
+            os.path.join(BRON, f) for f in os.listdir(BRON)
+            if f.lower().endswith((".png", ".webp", ".jpg"))
+        )
+        # Staat er van hetzelfde karakter zowel een plat als een al
+        # uitgesneden vel, dan wint het uitgesneden vel: dat is precies zoals
+        # de tekenaar het bedoeld heeft.
+        per_karakter = {}
+        for pad in alles:
+            k = karakter_van(os.path.basename(pad))
+            transparant = "transparant" in os.path.basename(pad).lower()
+            if k not in per_karakter or (transparant and not per_karakter[k][1]):
+                per_karakter[k] = (pad, transparant)
+        vellen = [v[0] for v in per_karakter.values()]
+        overgeslagen = [os.path.basename(p) for p in alles if p not in vellen]
+        if overgeslagen:
+            print("overgeslagen (er is een transparante versie):", ", ".join(overgeslagen))
     if not vellen:
         print(f"geen vellen gevonden in {BRON}", file=sys.stderr)
         return 1
