@@ -46,9 +46,14 @@ KARAKTERS = {
         "uit": "supercaek.glb",
         "clips": [("Supercaek_run.glb", "rennen")],
     },
+    # Cupcaek deelt hetzelfde skelet als Caek en SuperCaek. Ze heeft idle en
+    # lopen; rennen en springen kan ze desgewenst van Caek lenen.
     "cupcaek": {
         "uit": "cupcaek.glb",
-        "clips": [("Cupcaek.glb", "lopen")],
+        "clips": [
+            ("Cupcaek_idle.glb", "idle"),
+            ("cupcaek_loop.glb", "lopen"),
+        ],
     },
 }
 

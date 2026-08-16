@@ -12,7 +12,7 @@ import { Geluid } from './engine/audio.js';
 import { Level, zetLicht } from './world/level.js';
 import { bouwLevel } from './game/secties.js';
 import { laadCaek, Caek } from './game/caek.js';
-import { Cupcaek } from './game/cupcaek.js';
+import { Cupcaek, laadCupcaek } from './game/cupcaek.js';
 import { ScopeCreep } from './game/scopecreep.js';
 import { Hud } from './ui/hud.js';
 import { Dialoog, pauze } from './ui/dialoog.js';
@@ -75,13 +75,16 @@ class Spel {
   }
 
   async laad() {
-    const model = await laadCaek('./assets/caek.glb');
+    const [model, cupcaekModel] = await Promise.all([
+      laadCaek('./assets/caek.glb'),
+      laadCupcaek('./assets/cupcaek.glb'),
+    ]);
 
     this.level = new Level(this.scene);
     this.speler = new Caek(model, this.level, this.geluid);
     this.scene.add(this.speler.groep);
 
-    this.cupcaek = new Cupcaek();
+    this.cupcaek = new Cupcaek(cupcaekModel);
     this.scene.add(this.cupcaek.groep);
 
     this.scopeCreep = new ScopeCreep();

@@ -16,7 +16,7 @@ import * as props from '../world/props.js';
 import { PALET, verf } from '../world/materialen.js';
 import { zetLicht } from '../world/level.js';
 import { laadCaek, Caek } from '../game/caek.js';
-import { Cupcaek } from '../game/cupcaek.js';
+import { Cupcaek, laadCupcaek } from '../game/cupcaek.js';
 import { DOELENWIEL, PI } from '../config.js';
 import { bouwRegelaars, alsJs } from './regelaars.js';
 
@@ -183,7 +183,7 @@ async function begin() {
   } catch (e) {
     console.warn('Caek kon niet geladen worden in het lab:', e.message);
   }
-  const cupcaek = new Cupcaek();
+  const cupcaek = new Cupcaek(await laadCupcaek('./assets/cupcaek.glb'));
   cupcaek.positie.set(1.4, 0, 0.9);
   scene.add(cupcaek.groep);
 

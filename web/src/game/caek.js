@@ -17,7 +17,14 @@ const DOEL_HOOGTE = N.spelerHoogte;
  *  een profiel en dan zie je zijn gezicht niet meer. */
 const DRAAI = Math.PI / 2 * 0.72;
 
-export async function laadCaek(url) {
+/**
+ * Laadt een karakter-GLB, meet hem op en schaalt hem naar `doelHoogte`.
+ *
+ * Caek, Cupcaek en SuperCaek delen exact hetzelfde skelet — 24 botten met
+ * identieke namen — dus deze loader werkt voor alle drie, en een clip van de
+ * één kan het skelet van de ander aansturen.
+ */
+export async function laadKarakter(url, doelHoogte = DOEL_HOOGTE) {
   const loader = new GLTFLoader();
   const gltf = await loader.loadAsync(url);
   const wortel = gltf.scene;
@@ -54,7 +61,7 @@ export async function laadCaek(url) {
   for (const bot of skin.skeleton.bones) botBox.expandByPoint(p.setFromMatrixPosition(bot.matrixWorld));
 
   const gemetenHoogte = Math.max(geoBox.max.y - geoBox.min.y, botBox.max.y - botBox.min.y);
-  const schaal = gemetenHoogte > 1e-4 ? DOEL_HOOGTE / gemetenHoogte : 1;
+  const schaal = gemetenHoogte > 1e-4 ? doelHoogte / gemetenHoogte : 1;
   const voetOffset = Math.min(geoBox.min.y, botBox.min.y);
 
   wortel.scale.setScalar(schaal);
@@ -63,8 +70,11 @@ export async function laadCaek(url) {
   const clips = {};
   for (const clip of gltf.animations) clips[clip.name] = clip;
 
-  return { wortel, skin, clips, schaal };
+  return { wortel, skin, clips, schaal, gemetenHoogte };
 }
+
+/** Caek zelf, op spelerhoogte. */
+export const laadCaek = (url) => laadKarakter(url, DOEL_HOOGTE);
 
 export class Caek {
   /**

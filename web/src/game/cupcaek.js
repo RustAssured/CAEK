@@ -1,18 +1,41 @@
 /* CAEK — Cupcaek, het zusje.
  *
- * PLACEHOLDER MODEL. Het rigged 3D-model van Cupcaek was bij het bouwen van
- * deze slice nog onderweg; dit is een opbouw uit primitieven die de silhouet
- * uit de character sheet volgt (roze cupcake, strik, gouden laarsjes). Zodra
- * CUPCAEK_*.glb er is: run tools/build_caek_glb.py op die exports en vervang
- * `maakPlaceholder()` door een GLTF-laad zoals in caek.js — de rest van deze
- * klasse (volggedrag, blokkeren, hupjes) blijft ongewijzigd bruikbaar.
+ * Zij deelt het skelet van Caek en SuperCaek (24 botten, identieke namen), dus
+ * ze gebruikt dezelfde loader en zou desgewenst ook zijn ren- en sprongclips
+ * kunnen draaien. Zelf heeft ze idle en lopen, en meer heeft een sidekick niet
+ * nodig.
  *
  * Cupcaek doet drie dingen: meelopen, commentaar leveren, en op precies de
- * juiste momenten midden op het pad gaan staan. */
+ * juiste momenten midden op het pad gaan staan.
+ *
+ * Laadt haar model niet, dan valt ze terug op een opbouw uit primitieven. Dat
+ * is geen luxe: zonder die terugval is een mislukte download een zwart gat in
+ * het beeld in plaats van een lelijk maar werkend zusje.
+ */
 
 import * as THREE from 'three';
 import { PALET, verf, gezichtTextuur } from '../world/materialen.js';
 import { bol, cilinder, doos, vlak } from '../world/props.js';
+import { laadKarakter } from './caek.js';
+
+/** Iets kleiner dan Caek (2.0) — ze is het zusje. */
+export const CUPCAEK_HOOGTE = 1.78;
+
+/** Ze kijkt net als Caek driekwart naar de camera, gespiegeld op looprichting. */
+const DRAAI = Math.PI / 2 * 0.72;
+
+export async function laadCupcaek(url = './assets/cupcaek.glb') {
+  try {
+    return await laadKarakter(url, CUPCAEK_HOOGTE);
+  } catch (fout) {
+    console.warn('Cupcaek-model niet geladen, placeholder gebruikt:', fout.message);
+    return null;
+  }
+}
+
+/* ------------------------------------------------------------------ *
+ * Terugval: Cupcaek uit primitieven
+ * ------------------------------------------------------------------ */
 
 function maakPlaceholder() {
   const groep = new THREE.Group();
@@ -24,7 +47,6 @@ function maakPlaceholder() {
   vormpje.position.y = 0.52;
   groep.add(vormpje);
 
-  // ribbels van het papieren vormpje
   for (let i = 0; i < 12; i++) {
     const rib = doos(0.05, 0.7, 0.06, PALET.roze);
     const a = (i / 12) * Math.PI * 2;
@@ -42,7 +64,6 @@ function maakPlaceholder() {
   topje.position.y = 1.42;
   groep.add(topje);
 
-  // hagelslag op het glazuur
   const kleuren = [PALET.goud, PALET.groen, PALET.blauwLicht, PALET.room, PALET.oranje];
   for (let i = 0; i < 16; i++) {
     const korrel = new THREE.Mesh(new THREE.CapsuleGeometry(0.035, 0.1, 3, 5), verf(kleuren[i % kleuren.length], { emissief: 0.6 }));
@@ -53,7 +74,6 @@ function maakPlaceholder() {
     groep.add(korrel);
   }
 
-  // strik
   const strik = new THREE.Group();
   for (const zijde of [-1, 1]) {
     const lus = bol(0.17, PALET.rozeDiep, { emissief: 0.4 });
@@ -61,24 +81,19 @@ function maakPlaceholder() {
     lus.position.x = zijde * 0.2;
     strik.add(lus);
   }
-  const knoop = bol(0.1, PALET.rozeDiep, { emissief: 0.5 });
-  strik.add(knoop);
+  strik.add(bol(0.1, PALET.rozeDiep, { emissief: 0.5 }));
   strik.position.set(0.3, 1.5, 0.18);
   strik.rotation.z = 0.3;
   groep.add(strik);
 
-  // gezicht — getekend, want een emoji verdwijnt in de olieverf
   const gezicht = vlak(0.8, 0.8, new THREE.MeshBasicMaterial({
     map: gezichtTextuur('blij'), transparent: true, depthWrite: false,
   }));
-  // Vóór de bol uit: het glazuur heeft straal 0,56 rond y=1,06, dus op z=0,5
-  // zat het gezicht ín haar hoofd en zag je alleen een roze blob.
   gezicht.position.set(0, 1.10, 0.66);
   gezicht.renderOrder = 4;
   groep.add(gezicht);
   groep.userData.gezicht = gezicht;
 
-  // beentjes en laarsjes
   const benen = [];
   for (const zijde of [-1, 1]) {
     const been = new THREE.Group();
@@ -94,7 +109,6 @@ function maakPlaceholder() {
   }
   groep.userData.benen = benen;
 
-  // armpjes
   const armen = [];
   for (const zijde of [-1, 1]) {
     const arm = cilinder(0.06, 0.42, PALET.rozeDiep);
@@ -108,21 +122,59 @@ function maakPlaceholder() {
   return groep;
 }
 
+/* ------------------------------------------------------------------ */
+
 export class Cupcaek {
-  constructor() {
-    this.groep = maakPlaceholder();
-    this.groep.userData.placeholder = true;
+  /** @param {object|null} model resultaat van laadCupcaek(), of null */
+  constructor(model = null) {
+    this.groep = new THREE.Group();
+    this.draaier = new THREE.Group();
+    this.groep.add(this.draaier);
+
+    this.model = model;
+    if (model) {
+      this.draaier.add(model.wortel);
+      this.mixer = new THREE.AnimationMixer(model.wortel);
+      this.acties = {};
+      for (const [naam, clip] of Object.entries(model.clips)) {
+        this.acties[naam] = this.mixer.clipAction(clip);
+      }
+      this.huidigeActie = null;
+      this.speel('idle');
+    } else {
+      this.placeholder = maakPlaceholder();
+      this.placeholder.userData.placeholder = true;
+      this.draaier.add(this.placeholder);
+    }
+
     this.positie = new THREE.Vector3(0, 0, 0.6);
     this.klok = 0;
-    this.doelX = 0;
     this.blokkeert = null;     // x-positie waar ze niemand doorlaat
     this.volgAfstand = -2.1;
     this.snelheidX = 0;
+    this.doelDraai = DRAAI;
+    this.stemming = 'blij';
   }
 
-  /** 'blij' | 'verbaasd' | 'streng' | 'boos' | 'knipoog' | 'slaapt' */
+  speel(naam, vervaging = 0.2) {
+    const actie = this.acties?.[naam];
+    if (!actie || this.huidigeActie === actie) return;
+    actie.reset().setEffectiveWeight(1).fadeIn(vervaging).play();
+    if (this.huidigeActie) this.huidigeActie.fadeOut(vervaging);
+    this.huidigeActie = actie;
+  }
+
+  /**
+   * 'blij' | 'verbaasd' | 'streng' | 'boos' | 'knipoog' | 'slaapt'
+   *
+   * Met het echte model zit het gezicht in de textuur, dus dit stuurt geen
+   * mimiek meer aan maar lichaamstaal: hoe ze staat zegt genoeg. Op de
+   * placeholder wisselt het nog wel het getekende gezicht.
+   */
   gezicht(naam) {
-    const mesh = this.groep.userData.gezicht;
+    this.stemming = naam;
+    const mesh = this.placeholder?.userData.gezicht;
+    if (!mesh) return;
     mesh.material.map?.dispose();
     mesh.material.map = gezichtTextuur(naam);
     mesh.material.needsUpdate = true;
@@ -152,16 +204,35 @@ export class Cupcaek {
     this.positie.y += (doelY - this.positie.y) * Math.min(1, dt * 4.5);
 
     const rent = Math.abs(this.snelheidX) > 0.6;
+
+    // kijkrichting: mee met de looprichting, of naar de speler toe als ze wacht
+    const kijkt = rent ? Math.sign(this.snelheidX) : Math.sign(speler.x - this.positie.x || 1);
+    this.doelDraai = DRAAI * kijkt;
+    this.draaier.rotation.y += (this.doelDraai - this.draaier.rotation.y) * Math.min(1, dt * 9);
+
+    if (this.mixer) {
+      this.speel(rent ? 'lopen' : 'idle');
+      if (this.acties.lopen) {
+        this.acties.lopen.timeScale = THREE.MathUtils.clamp(Math.abs(this.snelheidX) / 2.6, 0.7, 1.8);
+      }
+      // strenge Cupcaek staat net iets rechter op
+      const kanteling = this.stemming === 'streng' ? 0.0 : -this.snelheidX * 0.02;
+      this.groep.rotation.z += (kanteling - this.groep.rotation.z) * Math.min(1, dt * 6);
+      this.mixer.update(dt);
+      this.groep.position.set(this.positie.x, this.positie.y, this.positie.z);
+      return;
+    }
+
+    // --- terugval: de placeholder wordt met de hand geanimeerd ---
     const hup = rent ? Math.abs(Math.sin(this.klok * 11)) * 0.19 : Math.sin(this.klok * 2.1) * 0.045;
     this.groep.position.set(this.positie.x, this.positie.y + hup, this.positie.z);
     this.groep.rotation.z = -this.snelheidX * 0.02;
-    this.groep.rotation.y = Math.abs(this.snelheidX) > 0.2 ? Math.sign(this.snelheidX) * 0.4 : 0;
 
-    const benen = this.groep.userData.benen;
+    const benen = this.placeholder.userData.benen;
     const fase = this.klok * (rent ? 13 : 3);
     benen[0].rotation.x = Math.sin(fase) * (rent ? 0.9 : 0.08);
     benen[1].rotation.x = Math.sin(fase + Math.PI) * (rent ? 0.9 : 0.08);
-    const armen = this.groep.userData.armen;
+    const armen = this.placeholder.userData.armen;
     armen[0].rotation.x = Math.sin(fase + Math.PI) * (rent ? 0.7 : 0.12);
     armen[1].rotation.x = Math.sin(fase) * (rent ? 0.7 : 0.12);
   }
