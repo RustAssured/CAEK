@@ -123,7 +123,7 @@ function sectieStart(level, spel) {
       lijn.visible = true;
       await s.dialoog.scene([
         ['verteller', 'PI RECEPT ONTVANGEN'],
-        ['verteller', `Strategisch doel: ${PI.strategischNaam}.`],
+        ['verteller', `Strategisch doel: ${DOELENWIEL.find((d) => d.id === PI.strategisch).naam}.`],
         ['verteller', `PI-doel: ${PI.doel}`],
         ['caek', 'Dit past niet in mijn rugzak.'],
         ['cupcaek', 'Het past wel. Het past alleen niet meteen.'],

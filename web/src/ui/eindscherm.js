@@ -39,13 +39,13 @@ export async function toonEindscherm(spel) {
       </figure>
       <dl class="eind-rijen">
         <div class="eind-rij" style="animation-delay:.05s"><dt>PI-doel</dt><dd>${piGehaald ? '✅ Bereikt' : '🟡 Deels bereikt'} — ${PI.doel}</dd></div>
-        <div class="eind-rij" style="animation-delay:.15s"><dt>Strategische bijdrage</dt><dd>🎯 ${doel.naam} — ${PI.strategischNaam}</dd></div>
+        <div class="eind-rij" style="animation-delay:.15s"><dt>Strategische bijdrage</dt><dd>🎯 ${doel.naam}</dd></div>
         <div class="eind-rij" style="animation-delay:.25s"><dt>Value</dt><dd class="eind-meter"><span class="balk"><i></i></span><b>0%</b></dd></div>
         <div class="eind-rij" style="animation-delay:.35s"><dt>Geleerd</dt><dd><ul>${geleerd.map((r) => `<li>${r}</li>`).join('') || '<li>Vooral: hard gewerkt.</li>'}</ul></dd></div>
         <div class="eind-rij" style="animation-delay:.45s"><dt>Overleefd</dt><dd><ul>${overleefd.map((r) => `<li>${r}</li>`).join('')}</ul></dd></div>
       </dl>
       <div class="eind-slot">
-        <div class="kreet">BETERE INGREDIËNTEN.<br>BETERE WAARDE.</div>
+        <div class="kreet">BETERE INGREDIËNTEN,<br>BETER RESULTAAT!</div>
         <p class="eind-noot" hidden></p>
         <div class="eind-knoppen">
           <button class="knop-primair" id="opnieuw">Nog een PI</button>

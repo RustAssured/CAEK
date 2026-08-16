@@ -49,10 +49,26 @@ PI PLANNING ─┬─→ sprint 1 ─→ REVIEW 1 ─┐
                               volgende PI komt in zicht
 ```
 
-Het terugkerende deel is geen herhaling om de herhaling. **Het podium van de
-Cluster Review loopt vol.** Review 1 is bijna leeg — alleen jij. Bij Inspect &
-Adapt staat iedereen er. Dat is "afstand tussen teams" en "saamhorigheid" als
-mechaniek in plaats van als tekstballon, en niemand hoeft het uit te leggen.
+Het terugkerende deel is geen herhaling om de herhaling. Maar wát er terugkomt
+is belangrijk, en hier zat mijn eerste ontwerp fout.
+
+**De zaal is vanaf review 1 vol.** Alle teams zijn er, elke keer. Dat is geen
+detail: die teams daar krijgen was de grootste strijd, en dat ze er nu allemaal
+zijn is precies waar dit cluster trots op is. Een podium dat langzaam volloopt
+zou zeggen *in het begin kwam er niemand*, en dat is het tegenovergestelde van
+de waarheid.
+
+**Wat wél groeit is de koppeling aan het Doelenwiel.** Bij review 1 hangen een
+paar teamdoelen aan een segment. Bij Inspect & Adapt bijna allemaal. Dat is de
+beweging die er echt is — *"alles wat we doen is daaraan gekoppeld, alle
+individuele team PI-doelen, steeds meer"* — en je ziet hem als gouden lijnen
+die zich per review vermenigvuldigen.
+
+**En de cadans.** Een deel van de teams draait nog niet mee in hetzelfde ritme.
+Dat is geen falen maar textuur: hun oventimer staat anders, hun taart komt een
+tel later uit de oven, ze staan nog te mixen als de rest al presenteert. Puur
+visueel — de speler hoeft er niets mee te doen. En als er onderweg één in de
+maat valt, zie je dat gebeuren.
 
 Sprint 1 is de langste (daar leer je de bewegingen). Sprint 2 tot 4 worden
 korter omdat je ze al kent. Loopt het uit de hand qua tijd, dan snijden we in
@@ -85,9 +101,9 @@ hoort en dan krimpt hij.
 Langste level. Hier leer je springen, oppakken, en dat niet alles wat er ligt
 van jou is.
 
-**→ CLUSTER REVIEW 1.** Bijna leeg podium. Eén demotafel: die van jou. Cupcaek
-staat op het pad, want doorlopen is geen optie. Je laat zien wat je gebakken
-hebt. Eén segment van het wiel licht op.
+**→ CLUSTER REVIEW 1.** Volle zaal, alle teams. Jouw demotafel staat ertussen.
+Cupcaek staat op het pad, want doorlopen is geen optie. Je laat zien wat je
+gebakken hebt, en er loopt een eerste gouden lijn naar het wiel.
 
 ### SPRINT 2 — de knoop
 
@@ -97,8 +113,8 @@ die samen de brug openen, en de knoop wordt een baguette.
 Wat verandert: de schakelaars horen bij *teams*, niet bij abstracties. Je moet
 bij drie teams langs. Dat is dezelfde puzzel maar het gaat ineens ergens over.
 
-**→ CLUSTER REVIEW 2.** Er staan nu drie tafels. De teams waar je langs bent
-geweest, staan er. Je ziet wat zíj gemaakt hebben. Meer wiel licht op.
+**→ CLUSTER REVIEW 2.** Zelfde volle zaal. De drie teams waar je langs bent
+geweest hebben nu ook een lijn naar het wiel. Je ziet wat zíj gemaakt hebben.
 
 ### SPRINT 3 — meten en de bus
 
@@ -108,11 +124,14 @@ Nieuw twee dingen:
 data naar wijst gaat open. Zoals nu, want dat werkt.
 
 **De bus van links.** Midden in de sprint komt er een bus. Van links. Met
-knipperlicht. Er stapt spoedwerk uit. Je moet iets laten vallen om het op te
-kunnen pakken — en je mag zelf kiezen wát je laat vallen.
+knipperlicht. Er stapt spoedwerk uit. Er verschijnt een keuze: *wat laat je
+vallen?* Je kiest iets. Dan: **"Genoteerd."** — en je draagt het allebei.
 
-**→ CLUSTER REVIEW 3.** Vol podium. Feedback sprinkles liggen overal, en de
-running gag: alles tegelijk verwerken laat de taart instorten.
+Cupcaek: *"Theoretisch mocht je iets laten vallen."* Dat is hoe het werkelijk
+gaat, en het is grappiger dan een keuze die wél telt.
+
+**→ CLUSTER REVIEW 3.** Feedback sprinkles liggen overal, en de running gag:
+alles tegelijk verwerken laat de taart instorten. Het wiel is over de helft.
 
 ### SPRINT 4 — laten zien, en wachten
 
@@ -126,8 +145,9 @@ erop rammen. Cupcaek kijkt toe. Na een paar seconden gaat de deur open.
 Geen namen, geen venijn — alleen het gevoel dat iedereen kent. Kort, één keer,
 en **[UIT]** met één regel in `config.js` als hij toch niet leuk blijkt.
 
-**→ INSPECT & ADAPT.** Alle teams op het podium. Alle taarten op tafel. Wat je
-in de PI Planning beloofde naast wat er werkelijk uitkwam. Het volle Doelenwiel.
+**→ INSPECT & ADAPT.** Alle taarten op tafel, bijna elk teamdoel aan een
+segment gekoppeld, het Doelenwiel vol. Wat je in de PI Planning beloofde naast
+wat er werkelijk uitkwam. En dan: SuperCaek.
 
 ---
 
@@ -149,14 +169,16 @@ staat immers al als segment, dus in het midden is het dubbel.
 | Cliënten inzicht in eigen situatie | oranje |
 | Beslissingen tijdig, juist en begrijpelijk | oranje |
 
-**[?]** In je twee visuals staan *Vereenvoudigen en digitaliseren* en
-*Bedrijfsvoering in control* verwisseld. Ik houd de volgorde van de losse
-wielposter aan.
+Volgorde bevestigd door Woo Jung; staat zo in `config.js`.
 
-**Hoe het werkt:** elk teamdoel dat je binnenhaalt laat een segment oplichten.
-Klein in de HUD tijdens het spelen, groot bij Inspect & Adapt. Vier sprints
-lang zie je het voller worden. Dat vervangt het losse Value-percentage als
-hoofdmeter — Value blijft, maar als planned versus actual op het eindscherm.
+**Hoe het werkt:** elk teamdoel dat aan een segment gekoppeld raakt laat dat
+segment oplichten. Klein in de HUD tijdens het spelen, groot bij Inspect &
+Adapt. Vier sprints lang zie je het voller worden.
+
+**Het wiel is de enige voortgangsmeter.** Geen aparte energiebalk ernaast —
+minder HUD is beter voor deze doelgroep, en één meter met één betekenis is
+sterker dan twee. Vol wiel = SuperCaek. Value blijft bestaan, maar alleen als
+planned versus actual op het eindscherm.
 
 ---
 
@@ -195,9 +217,29 @@ werken al; zodra de rigged GLB er is, is het een kwestie van inladen.*
 
 ### SuperCaek
 
-Twintig seconden waarin de hele renderer van genre wisselt. Vlak voor het einde,
-als de Value Energy vol is. Hij dendert door papierrommel, onduidelijkheid,
-dubbel werk en onnodige complexiteit. Niet door mensen.
+**Hoort bij de PI-dagen** — het moment dat het hele cluster samenkomt om extra
+kracht te laten zien. Niet bij een willekeurige sprint, en niet bij een
+energiebalk die volloopt van hard werken.
+
+Twee keer:
+
+- **PI Planning, kort.** Drie seconden transformatie, de wereld klapt om naar
+  comic, en dan poef — gewone Caek. Geen beloning maar een introductie: dit is
+  wie we zijn als we er allemaal staan. En de speler weet vanaf minuut één dat
+  dat ding bestaat.
+- **Inspect & Adapt, echt.** Twintig seconden waarin de hele renderer van genre
+  wisselt. Hij dendert door papierrommel, onduidelijkheid, dubbel werk en
+  onnodige complexiteit. Niet door mensen.
+
+**Wat hem oproept: het volle Doelenwiel.** Geen aparte energiebalk meer — het
+wiel ís de meter. Als elk segment brandt, is het zover. Dan betekent SuperCaek
+niet "je hebt hard gewerkt" maar "alles trekt aan dezelfde doelen", en dat is
+wat een mascotte hoort te betekenen.
+
+Daarna wordt het stil. Eerst het lawaai, dan het afscheid. Nooit andersom.
+
+**[?] SuperCupcaek.** Als SuperCaek is wat het cluster wordt, hoort zij daar
+ook. Ik heb haar model niet, dus ik houd de plek vrij.
 
 ### De teams
 
@@ -221,9 +263,15 @@ Daarom drie maatregelen:
 Zo verschuift het risico van "heeft Claude iemand vergeten" naar "is mijn eigen
 lijst compleet" — en dat is een controle van tien minuten.
 
-Wat ik uit je visuals heb gehaald als startlijst (corrigeer en vul aan):
-Equinox · Polis LA · Casio · Team UPA/Freggels · Smurfen · Sterke Verhalen ·
-Superheroes · Muppets · Tiem · Architectuur.
+Staat inmiddels in `config.js`:
+
+- **Applicatieteams (15)** — Polis LA · Superheroes · Sterke Verhalen · Casio ·
+  Equinox · KMT IO · Smurfen · Muppets · UGCEMP · AVBDVB · UPA · KBS · Luziver ·
+  BPMONE · Tiem
+- **Enablerteams (2)** — TET · Architectuur
+
+**[JIJ]** Nog aan te vullen: wie er in het publiek horen (UV/Uitvoering,
+vakgroepen, clusterleiding) en de volledige aftitelingslijst.
 
 ### Woo Jung FM
 
@@ -292,11 +340,10 @@ En helemaal onderaan, jullie eigen zin:
 
 ## 10. Wat ik van jou nodig heb
 
-1. **De roster** — sprintteams, andere teams, en wie er in het publiek horen.
-   Ruwe opsomming is prima.
+1. ~~De teams~~ — binnen. Nog wel: wie er in het **publiek** horen, en de
+   **aftitelingslijst**.
 2. **Je afscheidstekst**, plus of je naam eronder mag.
-3. **Deze twee checks:** klopt de volgorde van het Doelenwiel, en wil je de
-   wachttunnel überhaupt?
+3. **[?] SuperCupcaek** — plek vrijhouden of niet?
 
 Dat laatste kan ook nadat ik gebouwd heb — de tekst en de namen zijn los in te
 vullen zonder dat er code aan te pas komt.

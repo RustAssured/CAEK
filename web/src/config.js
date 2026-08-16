@@ -49,19 +49,41 @@ export const WAARDE = {
   plafond: 97,
 };
 
-/* Het Doelenwiel. Eén segment is het strategische doel van deze PI. */
+/* Het Doelenwiel — de acht echte doelen van UWV, met de klok mee vanaf boven.
+ *
+ * Dit is de ruggengraat van het spel: alles wat je doet is aan een segment
+ * gekoppeld, en het wiel loopt gedurende de vier sprints vol. In het naafje
+ * staat alleen DOELEN UWV; "Wet- en regelgeving" is al een segment, dus in het
+ * midden zou het dubbel staan.
+ *
+ * `kort` is wat er in het segment past, `naam` is de volledige formulering. */
 export const DOELENWIEL = [
-  { id: 'dienstverlening', naam: 'Dienstverlening', kleur: '#f5b229', icoon: '💛' },
-  { id: 'kwaliteit', naam: 'Kwaliteit', kleur: '#63a844', icoon: '✅' },
-  { id: 'teamwerk', naam: 'Teamwerk', kleur: '#3f63c9', icoon: '🤝' },
-  { id: 'vertrouwen', naam: 'Vertrouwen', kleur: '#cf3a2c', icoon: '⚖️' },
-  { id: 'wendbaarheid', naam: 'Wendbaarheid', kleur: '#e8721f', icoon: '⚙️' },
-  { id: 'groei', naam: 'Groei', kleur: '#7a4fb5', icoon: '📈' },
+  { id: 'wet', kort: ['Wet- en', 'regelgeving'], naam: 'Wet- en regelgeving', kleur: '#cf3a2c', icoon: '⚖️' },
+  { id: 'digitaliseren', kort: ['Vereenvoudigen', 'en digitaliseren'], naam: 'Vereenvoudigen en digitaliseren', kleur: '#f5b229', icoon: '🖥️' },
+  { id: 'bedrijfsvoering', kort: ['Bedrijfsvoering', 'in control'], naam: 'Bedrijfsvoering in control', kleur: '#efc026', icoon: '⚙️' },
+  { id: 'medewerkers', kort: ['Medewerkers gezien,', 'gehoord, gewaardeerd'], naam: 'Medewerkers gezien, gehoord en gewaardeerd', kleur: '#8cc63f', icoon: '💚' },
+  { id: 'eenuwv', kort: ['Eén UWV,', 'één overheid'], naam: 'Eén UWV, één overheid', kleur: '#63a844', icoon: '🤝' },
+  { id: 'dienstverlening', kort: ['Dienstverlening passend', 'en toegankelijk'], naam: 'Dienstverlening passend en toegankelijk', kleur: '#7cbf52', icoon: '🚪' },
+  { id: 'clienten', kort: ['Cliënten inzicht', 'in eigen situatie'], naam: 'Cliënten inzicht in eigen situatie', kleur: '#e8721f', icoon: '👤' },
+  { id: 'beslissingen', kort: ['Beslissingen tijdig,', 'juist, begrijpelijk'], naam: 'Beslissingen tijdig, juist en begrijpelijk', kleur: '#f0932b', icoon: '🕐' },
 ];
 
+/* De teams van het cluster. Dit is de enige lijst die je nakijkt voordat je
+ * het spel verstuurt — het spel werkt met vier teams net zo goed als met
+ * twintig, het podium van de Cluster Review schaalt mee. Wie hier niet in
+ * staat, hoort in de aftiteling (zie AFTITELING). */
+export const TEAMS = {
+  applicatie: [
+    'Polis LA', 'Superheroes', 'Sterke Verhalen', 'Casio', 'Equinox',
+    'KMT IO', 'Smurfen', 'Muppets', 'UGCEMP', 'AVBDVB',
+    'UPA', 'KBS', 'Luziver', 'BPMONE', 'Tiem',
+  ],
+  enabler: ['TET', 'Architectuur'],
+};
+
 export const PI = {
+  // welk segment van het wiel deze PI vooral dient
   strategisch: 'dienstverlening',
-  strategischNaam: 'Dienstverlening die klopt',
   doel: 'Afnemers en ketenpartners krijgen in één keer het juiste antwoord.',
 };
 

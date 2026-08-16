@@ -48,16 +48,21 @@ export function maakWiel({ actief, labels = false, gloed = 1 } = {}) {
     if (labels) {
       const hoek = (i * stap + stap / 2 - 90) * Math.PI / 180;
       const lr = R + 20;
-      const tekst = document.createElementNS(NS, 'text');
-      tekst.setAttribute('x', (c + lr * Math.cos(hoek)).toFixed(1));
-      tekst.setAttribute('y', (c + lr * Math.sin(hoek)).toFixed(1));
-      tekst.setAttribute('text-anchor', 'middle');
-      tekst.setAttribute('dominant-baseline', 'middle');
-      tekst.setAttribute('font-size', '9');
-      tekst.setAttribute('font-family', '"Arial Black", sans-serif');
-      tekst.setAttribute('fill', isActief ? '#ffd873' : '#8fa2d8');
-      tekst.textContent = doel.naam;
-      svg.appendChild(tekst);
+      // De echte doelen zijn lange zinnen; `kort` is de opgebroken versie.
+      const regels = doel.kort || [doel.naam];
+      regels.forEach((regel, r) => {
+        const tekst = document.createElementNS(NS, 'text');
+        const dy = (r - (regels.length - 1) / 2) * 8;
+        tekst.setAttribute('x', (c + lr * Math.cos(hoek)).toFixed(1));
+        tekst.setAttribute('y', (c + lr * Math.sin(hoek) + dy).toFixed(1));
+        tekst.setAttribute('text-anchor', 'middle');
+        tekst.setAttribute('dominant-baseline', 'middle');
+        tekst.setAttribute('font-size', '6.5');
+        tekst.setAttribute('font-family', '"Arial Black", sans-serif');
+        tekst.setAttribute('fill', isActief ? '#ffd873' : '#8fa2d8');
+        tekst.textContent = regel;
+        svg.appendChild(tekst);
+      });
     }
   });
 
