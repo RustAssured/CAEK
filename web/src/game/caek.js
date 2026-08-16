@@ -10,7 +10,7 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { NATUURKUNDE as N, SUPERCAEK } from '../config.js';
-import { PALET } from '../world/materialen.js';
+import { PALET, maskeer } from '../world/materialen.js';
 
 const DOEL_HOOGTE = N.spelerHoogte;
 /** Hoever Caek naar de kijker toe blijft draaien; puur 90 graden leest als
@@ -47,6 +47,11 @@ export async function laadKarakter(url, doelHoogte = DOEL_HOOGTE) {
       m.emissiveIntensity = 0.42;
       m.needsUpdate = true;
     }
+
+    // De karakters krijgen geen verf overheen. Een gezicht dat in de olie
+    // verdwijnt is geen stijl maar een fout -- en ze staan toch al op het
+    // vlak waar de filter het zachtst is.
+    if (m) maskeer(m, 0.04);
   });
   if (!skin) throw new Error('caek.glb bevat geen skinned mesh');
 

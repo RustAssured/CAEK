@@ -19,7 +19,7 @@ import { Hud } from './ui/hud.js';
 import { Dialoog, pauze } from './ui/dialoog.js';
 import { Paneel } from './ui/paneel.js';
 import { toonEindscherm } from './ui/eindscherm.js';
-import { CAMERA, NATUURKUNDE, PI, SECTIES, WAARDE } from './config.js';
+import { CAMERA, NATUURKUNDE, PI, SECTIES, SUPERCAEK, WAARDE } from './config.js';
 
 class Spel {
   constructor(canvas) {
@@ -89,7 +89,7 @@ class Spel {
       laadCupcaek('./assets/cupcaek.glb'),
       // SuperCaek deelt Caeks skelet, dus hij leent zijn clips; mislukt het
       // laden, dan valt de transformatie terug op de blauwe tint en de cape
-      laadKarakter('./assets/supercaek.glb', NATUURKUNDE.spelerHoogte)
+      laadKarakter('./assets/supercaek.glb', NATUURKUNDE.spelerHoogte * SUPERCAEK.hoogteFactor)
         .catch((fout) => { console.warn('SuperCaek-model niet geladen:', fout.message); return null; }),
     ]);
 
@@ -142,7 +142,8 @@ class Spel {
     for (const wiel of this.wielen) {
       for (const segment of wiel.children) {
         if (segment.userData?.doel !== doelId || !segment.material?.emissive) continue;
-        segment.material = segment.material.clone();
+        // niet klonen: maskeerEigen() heeft elk segment al zijn eigen
+        // materiaal gegeven, en een kloon zou het verfmasker kwijtraken
         segment.material.emissive.setHex(0xffd873).multiplyScalar(0.75);
       }
     }
@@ -374,19 +375,43 @@ class Spel {
     if (this.speler.superActief) this.schud = Math.max(this.schud, 0.12);
   }
 
-  /** Zakt de framerate weg, dan één stap terug in beeldkwaliteit. */
+  /**
+   * Beeldkwaliteit die zichzelf bijstelt.
+   *
+   * Twee kanten op, en snel: een halve seconde meten is genoeg om te weten of
+   * het stroef loopt, en drie seconden wachten terwijl het schokt is drie
+   * seconden te lang. Omhoog gaat behoedzamer dan omlaag, anders gaat hij
+   * tussen twee trappen zitten pendelen.
+   */
   meetPrestatie(dt) {
     if (this.kwaliteitVast) return;
     this.fpsMonster.push(dt);
-    if (this.fpsMonster.length < 90) return;
+    if (this.fpsMonster.length < 30) return;
     const gemiddeld = this.fpsMonster.reduce((a, b) => a + b, 0) / this.fpsMonster.length;
     this.fpsMonster.length = 0;
     const fps = 1 / gemiddeld;
-    const trap = ['hoog', 'midden', 'laag', 'uit'];
+    // 'uit' zit er met opzet niet in: dat is kale 3D, en dan is de hele stijl
+    // weg. Wie dat wil kiest het zelf in het startscherm.
+    const trap = ['hoog', 'midden', 'laag'];
     const nu = trap.indexOf(this.schilder.kwaliteitNaam);
-    if (fps < 26 && nu < trap.length - 1) {
+    if (nu < 0) return;
+
+    if (fps < 48 && nu < trap.length - 1) {
       this.schilder.zetKwaliteit(trap[nu + 1]);
+      this.rustig = 0;
       console.info(`CAEK: ${Math.round(fps)} fps — beeldkwaliteit terug naar "${trap[nu + 1]}"`);
+      return;
+    }
+    // pas omhoog na een paar rustige metingen achter elkaar
+    if (fps > 58 && nu > 0) {
+      this.rustig = (this.rustig || 0) + 1;
+      if (this.rustig >= 6) {
+        this.rustig = 0;
+        this.schilder.zetKwaliteit(trap[nu - 1]);
+        console.info(`CAEK: ${Math.round(fps)} fps — beeldkwaliteit omhoog naar "${trap[nu - 1]}"`);
+      }
+    } else {
+      this.rustig = 0;
     }
   }
 }

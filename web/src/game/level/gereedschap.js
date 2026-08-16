@@ -70,29 +70,31 @@ export function trekDraad(level, van, naar, opties = {}) {
  * Ze zitten met opzet aan de kant van de speler en niet achter een muur: dat
  * de stakeholders ín het cluster zitten is precies het punt.
  */
-export function zetPubliek(level, { x, aantal = 14, breedte = 26, z = 5.2, label = null }) {
+export function zetPubliek(level, { x, aantal = 14, breedte = 26, z = 4.0, label = null }) {
   const hoofden = [];
   for (let i = 0; i < aantal; i++) {
     const rij = i % 2;
     const kleur = [PALET.toast, PALET.roze, PALET.room, PALET.goud][i % 4];
-    const hoofd = props.bol(0.44, kleur, { emissief: 0.22 });
+    const hoofd = props.bol(0.4, kleur, { emissief: 0.1 });
     const hx = x - breedte / 2 + (i / Math.max(1, aantal - 1)) * breedte;
-    level.plaats(hoofd, hx, 1.05 + rij * 0.18, z + rij * 2.0);
+    level.plaats(hoofd, hx, 0.95 + rij * 0.16, z + rij * 1.8);
     hoofden.push(hoofd);
 
-    const romp = props.doos(0.7, 0.9, 0.5, kleur === PALET.room ? PALET.blauwLicht : PALET.blauw, { emissief: 0.15 });
-    level.plaats(romp, hx, 0.5 + rij * 0.18, z + rij * 2.0);
+    const romp = props.doos(0.64, 0.85, 0.46, kleur === PALET.room ? PALET.blauwLicht : PALET.blauw, { emissief: 0.1 });
+    level.plaats(romp, hx, 0.45 + rij * 0.16, z + rij * 1.8);
   }
   if (label) {
-    const bordje = props.label(label, { breedte: 9, grootte: 44, plaat: true });
-    level.plaats(bordje, x, 3.0, z + 3.4);
+    // Klein en aan de kant. Een banner van negen meter vlak voor de camera
+    // dekt de halve zaal af, en juist die zaal is het punt.
+    const bordje = props.label(label, { breedte: 5.4, grootte: 44, plaat: true });
+    level.plaats(bordje, x - breedte / 2 - 1.5, 2.6, z + 1.2);
   }
   // zacht meedeinen; als ze slapen wordt het traag en laag
   level.tik((dt, speler, s) => {
     for (let i = 0; i < hoofden.length; i++) {
       const slaapt = s.vlaggen.publiekSlaapt;
-      hoofden[i].position.y = (slaapt ? 0.72 : 1.05 + (i % 2) * 0.18)
-        + Math.sin(s.klok * (slaapt ? 0.8 : 2.3) + i * 0.7) * (slaapt ? 0.03 : 0.08);
+      hoofden[i].position.y = (slaapt ? 0.66 : 0.95 + (i % 2) * 0.16)
+        + Math.sin(s.klok * (slaapt ? 0.8 : 2.3) + i * 0.7) * (slaapt ? 0.03 : 0.07);
     }
   });
   return hoofden;

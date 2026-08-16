@@ -1,5 +1,11 @@
-/* CAEK — tekstballonnen. Eén regel tegelijk, doorklikken met spatie/E/klik.
- * Alles async, zodat een scene gewoon `await dialoog.zeg(...)` kan doen. */
+/* CAEK — tekstballonnen. Eén regel tegelijk, async, zodat een scene gewoon
+ * `await dialoog.zeg(...)` kan doen.
+ *
+ * Regels zetten zichzelf door zodra ze lang genoeg gestaan hebben. Wachten op
+ * een klik bij élke regel maakt van een gesprek een klusje -- en deze
+ * doelgroep speelt normaal geen games, dus die zit niet te wachten op een
+ * spatiebalk-marathon. Klikken kan nog steeds, en dan gaat het meteen door.
+ * Wie langzamer leest, laat gewoon los. */
 
 const SPREKERS = {
   caek: { naam: 'CAEK', avatar: '🍞', klasse: 'caek' },
@@ -85,7 +91,20 @@ export class Dialoog {
     if (opties.wacht) {
       await pauze(opties.wacht * 1000);
     } else {
-      await new Promise((res) => { this.wachtOpKlik = res; });
+      // leestijd: een basis plus iets per teken, met een dak erop
+      const leestijd = Math.min(6200, 900 + tekens.length * 42);
+      await new Promise((res) => {
+        let gedaan = false;
+        const klaar = () => {
+          if (gedaan) return;
+          gedaan = true;
+          clearTimeout(this.autoTimer);
+          this.wachtOpKlik = null;
+          res();
+        };
+        this.wachtOpKlik = klaar;
+        this.autoTimer = setTimeout(klaar, leestijd);
+      });
     }
     this.bezig = false;
     this.el.hidden = true;
@@ -99,6 +118,7 @@ export class Dialoog {
   }
 
   sluit() {
+    clearTimeout(this.autoTimer);
     this.bezig = false;
     this.el.hidden = true;
   }

@@ -5,7 +5,7 @@
  * harde kleurvlakken zijn precies wat de olieverf-pipeline mooi maakt. */
 
 import * as THREE from 'three';
-import { PALET, verf, gloed, tekstTextuur, emojiTextuur } from './materialen.js';
+import { PALET, verf, gloed, maskeer, maskeerEigen, tekstTextuur, emojiTextuur } from './materialen.js';
 
 const DOOS = new THREE.BoxGeometry(1, 1, 1);
 const BOL = new THREE.SphereGeometry(0.5, 18, 14);
@@ -95,7 +95,9 @@ export function bord(regels, {
     breedte: 640, hoogte: Math.round(640 * hoogte / breedte),
     achtergrond: 'geen', rand: 'geen', kleur: tekstKleur, grootte,
   });
-  const paneel = vlak(breedte * 0.92, hoogte * 0.86, new THREE.MeshBasicMaterial({ map: tex, transparent: true }));
+  const paneelMat = new THREE.MeshBasicMaterial({ map: tex, transparent: false, alphaTest: 0.4 });
+  maskeer(paneelMat, 0.06);
+  const paneel = vlak(breedte * 0.92, hoogte * 0.86, paneelMat);
   paneel.position.set(0, paal + hoogte / 2, 0.15);
   groep.add(paneel);
   return groep;
@@ -110,7 +112,14 @@ export function label(tekst, { breedte = 2.6, kleur = '#ffd873', grootte = 68, p
     rand: plaat ? 'rgba(245,178,41,.9)' : 'geen',
     randDikte: 8,
   });
-  const m = vlak(breedte, breedte * 160 / 512, new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthWrite: false }));
+  // Ondoorzichtig met een alphaTest in plaats van transparant: alleen dan kan
+  // het alfakanaal het verfmasker dragen, en tekst die je niet kunt lezen is
+  // erger dan een randje aliasing. De verf smeert dat randje toch weer glad.
+  const materiaal = new THREE.MeshBasicMaterial({
+    map: tex, transparent: false, alphaTest: 0.4, depthWrite: false,
+  });
+  maskeer(materiaal, 0.06);
+  const m = vlak(breedte, breedte * 160 / 512, materiaal);
   m.renderOrder = 5;
   return m;
 }
@@ -198,6 +207,10 @@ export function doelenwiel(doelen, actiefId, straal = 4) {
 
   const ring = new THREE.Mesh(new THREE.TorusGeometry(straal * 1.04, 0.16, 8, 40), verf(PALET.goud, { emissief: 0.5 }));
   groep.add(ring);
+
+  // Het wiel is de voortgangsmeter, geen decor. Het hangt ver naar achteren,
+  // dus zonder eigen masker zou het volledig in de verf verdwijnen.
+  maskeerEigen(groep, 0.22);
   return groep;
 }
 

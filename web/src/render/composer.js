@@ -15,10 +15,28 @@ import { Streken } from './streken.js';
 /** Voorinstellingen. `renderSchaal` is verreweg de grootste knop op snelheid.
  *  `streken` zet de geometrie-penselen aan; die kosten vooral fillrate. */
 export const KWALITEIT = {
-  hoog:   { renderSchaal: 0.88, straal: 5.0, licStappen: 0, impasto: 1.35, tensorDeling: 2, streken: true },
-  midden: { renderSchaal: 0.74, straal: 3.6, licStappen: 0, impasto: 1.10, tensorDeling: 2, streken: true },
-  laag:   { renderSchaal: 0.62, straal: 3.0, licStappen: 4, impasto: 0.50, tensorDeling: 2, streken: false },
-  uit:    { renderSchaal: 1.00, straal: 0.0, licStappen: 0, impasto: 0.00, tensorDeling: 4, streken: false },
+  hoog:   { renderSchaal: 0.80, straal: 4.2, licStappen: 0, impasto: 1.35, tensorDeling: 2, streken: true, strekenDeel: 1.0, dpr: 1.5 },
+  midden: { renderSchaal: 0.68, straal: 3.2, licStappen: 0, impasto: 1.10, tensorDeling: 2, streken: true, strekenDeel: 0.6, dpr: 1.25 },
+  laag:   { renderSchaal: 0.58, straal: 2.6, licStappen: 4, impasto: 0.50, tensorDeling: 3, streken: false, strekenDeel: 0, dpr: 1.0 },
+  uit:    { renderSchaal: 1.00, straal: 0.0, licStappen: 0, impasto: 0.00, tensorDeling: 4, streken: false, strekenDeel: 0, dpr: 1.0 },
+};
+
+/* Hoe hard er geschilderd wordt, per diepte.
+ *
+ * Dit is 2.5D: de karakters en alles waar je mee kunt, staan op z = 0. Wat
+ * daarachter ligt is decor. Dus is de afstand tot de camera meteen een goede
+ * maat voor "hoeveel verf mag hier overheen": vlakbij bijna niets, achterin
+ * het volle werk. Dat leest ook als lucht -- verte is waziger dan dichtbij.
+ *
+ * De uitzondering zit in het alfakanaal: materialen mogen een eigen sterkte
+ * meegeven (zie MASKER in world/materialen.js), en de karakters zetten die
+ * bijna op nul. Anders verdwijnt Caeks gezicht in de verf. */
+export const DIEPTE = {
+  nabij: 12.0,   // hier begint het masker; alles ervoor krijgt `bodem`
+  ver: 42.0,     // hier is de filter op volle sterkte
+  bodem: 0.45,   // minimale sterkte op het spelvlak -- niet nul, wel bescheiden:
+                 // op nul wordt de vloer een vlakke plaat en valt hij uit de
+                 // schilderij. Karakters en tekst hebben hun eigen masker.
 };
 
 /** Vaste stijlparameters — hieraan draaien is het leukste deel van het werk.
@@ -42,7 +60,7 @@ export const STIJL = {
                          // knijpt de krimp ook in de lucht en wordt lengte inert
     anisotropie: 0.7,    // lengte volgt de eenduidigheid van het veld
     basisHoogte: 0.3,    // hoogte van de onderschildering
-    maxPerLaag: 32000,   // bovengrens per laag; het lab mag hem opzoeken
+    maxPerLaag: 24000,   // bovengrens per laag; het lab mag hem opzoeken
 
     // Kleur per haal. Eén egale kleur per vlak leest als plastic; Van Gogh
     // legt naast elkaar liggende halen in verschillende tinten neer.
@@ -115,6 +133,9 @@ export class Schilder {
 
     this.rtScene = maakDoel(1, 1, this.type, true);
     this.rtScene.texture.colorSpace = THREE.LinearSRGBColorSpace;
+    // De diepte hebben we nodig als masker: hoe verder weg, hoe dikker de verf.
+    this.rtScene.depthTexture = new THREE.DepthTexture(1, 1);
+    this.rtScene.depthTexture.type = THREE.UnsignedIntType;
     this.rtT0 = maakDoel(1, 1, this.type);
     this.rtT1 = maakDoel(1, 1, this.type);
     this.rtT2 = maakDoel(1, 1, this.type);
@@ -144,6 +165,9 @@ export class Schilder {
       uStraal: { value: 5.0 },
       uAlfa: { value: STIJL.alfa },
       uScherpte: { value: STIJL.scherpte },
+      uDiepte: { value: null },
+      uCam: { value: new THREE.Vector2(0.5, 300) },
+      uMasker: { value: new THREE.Vector3(DIEPTE.nabij, DIEPTE.ver, DIEPTE.bodem) },
     });
 
     this.finale = maakQuad(finaleFragment, {
@@ -162,6 +186,9 @@ export class Schilder {
       uBelichting: { value: STIJL.belichting },
       uSuper: { value: 0 },
       uFlits: { value: 0 },
+      uDiepte: { value: null },
+      uCam: { value: new THREE.Vector2(0.5, 300) },
+      uMasker: { value: new THREE.Vector3(DIEPTE.nabij, DIEPTE.ver, DIEPTE.bodem) },
     });
 
     this.streken = new Streken(renderer, STIJL.streken);
@@ -179,6 +206,7 @@ export class Schilder {
     this.finale.materiaal.uniforms.uLic.value = p.licStappen;
     this.finale.materiaal.uniforms.uImpasto.value = p.impasto;
     this.strekenAan = p.streken !== false;
+    this.streken?.zetDeel(p.strekenDeel ?? 1);
     this.pasMaatAan(this.cssBreedte || 1, this.cssHoogte || 1, true);
   }
 
@@ -186,7 +214,7 @@ export class Schilder {
     this.cssBreedte = cssBreedte;
     this.cssHoogte = cssHoogte;
     const p = this.instelling;
-    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    const dpr = Math.min(window.devicePixelRatio || 1, p.dpr ?? 1.5);
     const schaal = p.renderSchaal * dpr;
     const b = Math.max(2, Math.round(cssBreedte * schaal));
     const h = Math.max(2, Math.round(cssHoogte * schaal));
@@ -195,6 +223,8 @@ export class Schilder {
     this.breedte = b;
     this.hoogte = h;
     this.rtScene.setSize(b, h);
+    this.rtScene.depthTexture.image.width = b;
+    this.rtScene.depthTexture.image.height = h;
     this.rtVerf.setSize(b, h);
 
     const tb = Math.max(2, Math.round(b / p.tensorDeling));
@@ -235,6 +265,12 @@ export class Schilder {
   render(scene, camera, tijd, doel = null) {
     const r = this.renderer;
     const wasAutoClear = r.autoClear;
+
+    // het dieptemasker heeft de camera-instellingen nodig om te lineariseren
+    for (const q of [this.kuwahara, this.finale]) {
+      q.materiaal.uniforms.uDiepte.value = this.rtScene.depthTexture;
+      q.materiaal.uniforms.uCam.value.set(camera.near ?? 0.5, camera.far ?? 300);
+    }
 
     this.lucht.materiaal.uniforms.uTijd.value = tijd;
     this.lucht.materiaal.uniforms.uPan.value.set(camera.position.x * 0.012, camera.position.y * 0.010);
@@ -282,6 +318,7 @@ export class Schilder {
     const f = this.finale.materiaal.uniforms;
     if (this.strekenAan) {
       this.#zetVerschuiving(camera);
+      this.streken.zetMasker(this.rtScene.depthTexture, camera.near ?? 0.5, camera.far ?? 300);
       this.streken.render(this.rtVerf.texture, this.rtT2.texture, this.verschuiving);
       f.uVerf.value = this.streken.doel.textures[0];
       f.uHoogteKaart.value = this.streken.doel.textures[1];

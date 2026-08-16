@@ -43,6 +43,54 @@ export function verf(kleur, { emissief = 0.16, plat = false, doorzichtig = 0, du
   return m;
 }
 
+/**
+ * Zet hoeveel verf er over dit materiaal heen mag: 0 = helemaal niet, 1 = het
+ * volle werk. De renderketen leest dit uit het alfakanaal van de scene.
+ *
+ * De diepte doet het meeste werk -- achterin dikker dan vooraan -- maar
+ * sommige dingen horen scherp te blijven ongeacht waar ze staan. Caeks
+ * gezicht bijvoorbeeld, en alles waar tekst op staat. Een grap die je niet
+ * kunt lezen is geen grap.
+ *
+ * Werkt alleen op ondoorzichtige materialen: bij transparante materialen gaat
+ * het alfakanaal op in de blending en komt er niets van terecht.
+ */
+export function maskeer(doel, sterkte = 0.12) {
+  const materialen = [];
+  if (doel?.isMaterial) materialen.push(doel);
+  else doel?.traverse?.((o) => { if (o.isMesh && o.material) materialen.push(o.material); });
+
+  for (const origineel of materialen) {
+    if (origineel.userData?.maskerSterkte === sterkte) continue;
+    if (origineel.transparent) continue;   // zie hierboven: heeft geen zin
+    const m = origineel;
+    m.userData = { ...m.userData, maskerSterkte: sterkte };
+    m.onBeforeCompile = (shader) => {
+      shader.fragmentShader = shader.fragmentShader.replace(
+        '#include <dithering_fragment>',
+        `#include <dithering_fragment>\n  gl_FragColor.a = ${sterkte.toFixed(3)};`,
+      );
+    };
+    m.customProgramCacheKey = () => `masker${sterkte}`;
+    m.needsUpdate = true;
+  }
+  return doel;
+}
+
+/**
+ * Als maskeer(), maar het materiaal wordt eerst gekloond. Nodig omdat verf()
+ * materialen deelt via een cache: één gemaskeerd bordje zou anders elk object
+ * met dezelfde kleur meenemen.
+ */
+export function maskeerEigen(object, sterkte = 0.12) {
+  object?.traverse?.((o) => {
+    if (!o.isMesh || !o.material || o.material.transparent) return;
+    o.material = o.material.clone();
+    maskeer(o.material, sterkte);
+  });
+  return object;
+}
+
 /** Lichtgevend materiaal voor ovengloed, gouden lijnen en energie. */
 export function gloed(kleur, sterkte = 1) {
   const sleutel = `gloed|${kleur}|${sterkte}`;

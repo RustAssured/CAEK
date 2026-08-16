@@ -218,25 +218,67 @@ vec4 flowInfo(vec3 g) {
  * Pass 5 — anisotrope Kuwahara (Kyprianidis), 8 sectoren met
  * polynoomweging, elliptische kernel langs het flowveld
  * ------------------------------------------------------------------ */
+const maskerChunk = /* glsl */ `
+/* ------------------------------------------------------------------ *
+ * Het dieptemasker
+ * ------------------------------------------------------------------ *
+ *
+ * Hoeveel verf mag er op deze pixel? In een 2.5D-spel staat alles waar je
+ * mee kunt op z = 0 en is de rest decor, dus de afstand tot de camera is
+ * meteen de juiste maat. Vlakbij bijna niets, achterin het volle werk.
+ *
+ * Het alfakanaal van de scene is de uitzondering: een materiaal mag zijn
+ * eigen sterkte meegeven. De karakters zetten die bijna op nul, want een
+ * gezicht dat in de verf verdwijnt is geen stijl maar een fout.
+ */
+float lineaireDiepte(float d, vec2 cam) {
+  float z = d * 2.0 - 1.0;
+  return (2.0 * cam.x * cam.y) / (cam.y + cam.x - z * (cam.y - cam.x));
+}
+
+float verfSterkte(sampler2D diepteKaart, vec2 uv, vec2 cam, vec3 masker, float alfa) {
+  float d = lineaireDiepte(texture2D(diepteKaart, uv).x, cam);
+  float ver = smoothstep(masker.x, masker.y, d);
+  return clamp(mix(masker.z, 1.0, ver) * alfa, 0.0, 1.0);
+}
+`;
+
 export const kuwaharaFragment = /* glsl */ `
 precision highp float;
 varying vec2 vUv;
 uniform sampler2D uBron;
 uniform sampler2D uTensor;
+uniform sampler2D uDiepte;
 uniform vec2 uPixel;
+uniform vec2 uCam;         // near, far
+uniform vec3 uMasker;      // nabij, ver, bodem
 uniform float uStraal;
 uniform float uAlfa;       // excentriciteit
 uniform float uScherpte;   // q
 out vec4 fragKleur;
 
 ${flowChunk}
+${maskerChunk}
 
 void main() {
+  vec4 bron = texture2D(uBron, vUv);
+  float sterkte = verfSterkte(uDiepte, vUv, uCam, uMasker, bron.a);
+
+  // Nauwelijks verf hier? Dan ook geen achtenzestig sectorsommen. Dit is
+  // meteen de goedkoopste snelheidswinst in de hele keten: karakters en
+  // voorgrond slaan de dure lus helemaal over.
+  if (sterkte < 0.04) {
+    fragKleur = vec4(bron.rgb, bron.a);
+    return;
+  }
+
+  float straal = max(1.0, uStraal * sterkte);
+
   vec4 stroom = flowInfo(texture2D(uTensor, vUv).xyz);
   float anis = stroom.z;
 
-  float a = uStraal * clamp((uAlfa + anis) / uAlfa, 0.1, 2.0);
-  float b = uStraal * clamp(uAlfa / (uAlfa + anis), 0.1, 2.0);
+  float a = straal * clamp((uAlfa + anis) / uAlfa, 0.1, 2.0);
+  float b = straal * clamp(uAlfa / (uAlfa + anis), 0.1, 2.0);
   float cs = stroom.x, sn = stroom.y;
 
   // S * R^-1: draai naar het streekframe en schaal de ellips naar de eenheidscirkel
@@ -245,7 +287,7 @@ void main() {
   int maxX = int(sqrt(a * a * cs * cs + b * b * sn * sn) + 0.5);
   int maxY = int(sqrt(a * a * sn * sn + b * b * cs * cs) + 0.5);
 
-  float zeta = 2.0 / max(uStraal, 1.0);
+  float zeta = 2.0 / max(straal, 1.0);
   const float nuldoorgang = 0.58;
   float sinZ = sin(nuldoorgang);
   float eta = (zeta + cos(nuldoorgang)) / (sinZ * sinZ);
@@ -298,7 +340,9 @@ void main() {
     float w = 1.0 / (1.0 + pow(max(sigma2 * 255.0, 0.0), 0.5 * uScherpte));
     uit += vec4(gemiddelde * w, w);
   }
-  fragKleur = vec4(uit.rgb / max(uit.a, 1e-5), 1.0);
+  vec3 geschilderd = uit.rgb / max(uit.a, 1e-5);
+  // gedeeltelijk maskeren: de overgang van scherp naar verf mag geleidelijk
+  fragKleur = vec4(mix(bron.rgb, geschilderd, smoothstep(0.0, 0.55, sterkte)), bron.a);
 }
 `;
 
@@ -326,6 +370,9 @@ attribute vec4 aWillekeur;    // per streek: lengte, breedte, hoek, borstel
 
 uniform sampler2D uKleur;     // het geschilderde beeld (Kuwahara)
 uniform sampler2D uTensor;    // het gladde flowveld
+uniform sampler2D uDiepte;    // dieptemasker: waar mag er verf liggen
+uniform vec2 uCam;            // near, far
+uniform vec3 uMasker;         // nabij, ver, bodem
 uniform vec2 uResolutie;
 uniform vec2 uVerschuiving;   // camerapan, zodat streken aan de wereld plakken
 uniform float uLengte;
@@ -350,6 +397,7 @@ varying float vWeging;
 ${flowChunk}
 ${ruis}
 ${kleurChunk}
+${maskerChunk}
 
 /* Waar de scene vlak is (lucht) zegt de structuurtensor niets en krijgen alle
  * halen dezelfde saaie richting. Van Gogh vult zulke vlakken juist met
@@ -368,6 +416,14 @@ vec2 wervelRichting(vec2 uv) {
 
 void main() {
   vec2 anker = fract(aAnker + uVerschuiving);
+
+  // Valt deze haal op een karakter of vlak voor de camera? Dan hoort hij er
+  // niet, en gooien we hem hier al weg -- buiten beeld is gratis.
+  float sterkte = verfSterkte(uDiepte, anker, uCam, uMasker, texture2D(uKleur, anker).a);
+  if (sterkte < 0.06) {
+    gl_Position = vec4(2.0, 2.0, 2.0, 1.0);
+    return;
+  }
 
   vec3 tensor = texture2D(uTensor, anker).xyz;
   vec4 stroom = flowInfo(tensor);
@@ -433,7 +489,7 @@ void main() {
   // Een schilder zet grove halen overal neer en pakt pas een fijn penseel
   // waar iets te zien is. Zonder dit dekt de detaillaag ook de lucht af en
   // verdwijnt precies de brede, zwierige streek die je wilt houden.
-  vWeging = mix(1.0, smoothstep(0.04, 0.55, randKracht), uDetail);
+  vWeging = mix(1.0, smoothstep(0.04, 0.55, randKracht), uDetail) * smoothstep(0.06, 0.45, sterkte);
 }
 `;
 
@@ -518,10 +574,14 @@ uniform float uVignet;
 uniform float uBelichting;
 uniform float uSuper;
 uniform float uFlits;      // witte impactflits bij de transformatie
+uniform sampler2D uDiepte;
+uniform vec2 uCam;         // near, far
+uniform vec3 uMasker;      // nabij, ver, bodem
 out vec4 fragKleur;
 
 ${ruis}
 ${flowChunk}
+${maskerChunk}
 
 float luminantie(vec3 c) { return dot(c, vec3(0.2126, 0.7152, 0.0722)); }
 
@@ -597,28 +657,34 @@ void main() {
   vec2 f = stroomRichting(vUv);
   vec2 n = vec2(-f.y, f.x);
 
+  // Hetzelfde masker als in de Kuwahara: reliëf en doekmottel horen alleen
+  // daar te liggen waar ook verf ligt. Anders krijgt Caeks gezicht ribbels
+  // die er in de kleur niet zijn.
+  float masker = verfSterkte(uDiepte, vUv, uCam, uMasker, 1.0);
+
   vec3 verf = uLic > 0.5 ? lic(vUv, uLic) : texture2D(uVerf, vUv).rgb;
 
   // Doekmottel: grote, trage helderheidsvariatie. Zonder dit blijven vlakke
   // vlakken (lucht, grond) plastic — de Kuwahara heeft niets om op te kauwen.
   vec2 pixels = vUv / uPixel;
-  verf *= 0.90 + 0.20 * ruis2(pixels * 0.016 + 3.0);
+  verf *= 1.0 + (0.20 * ruis2(pixels * 0.016 + 3.0) - 0.10) * masker;
 
   // ---- impasto -------------------------------------------------
-  if (uImpasto > 0.001) {
+  float impasto = uImpasto * masker;
+  if (impasto > 0.001) {
     float hL = hoogte(vUv - vec2(uPixel.x, 0.0), f, n);
     float hR = hoogte(vUv + vec2(uPixel.x, 0.0), f, n);
     float hD = hoogte(vUv - vec2(0.0, uPixel.y), f, n);
     float hU = hoogte(vUv + vec2(0.0, uPixel.y), f, n);
 
-    float sterkte = uImpasto * (uStreken > 0.5 ? 62.0 : 26.0);
+    float sterkte = impasto * (uStreken > 0.5 ? 62.0 : 26.0);
     vec3 N = normalize(vec3((hL - hR) * sterkte, (hD - hU) * sterkte, 1.0));
     vec3 L = normalize(vec3(-0.55, 0.64, 0.54));   // strijklicht linksboven
     float diffuus = clamp(dot(N, L), 0.0, 1.0);
     float glans = pow(clamp(dot(reflect(-L, N), vec3(0.0, 0.0, 1.0)), 0.0, 1.0), 28.0);
 
-    verf *= 0.74 + 0.46 * diffuus;
-    verf += glans * 0.26 * uImpasto;
+    verf *= mix(1.0, 0.74 + 0.46 * diffuus, masker);
+    verf += glans * 0.26 * impasto;
   }
 
   // ---- grade: belichting, split-toning, vignet ------------------

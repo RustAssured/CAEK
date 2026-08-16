@@ -2,7 +2,12 @@
  *
  * Begint als een piepklein schattig deegbolletje. Elk niet-noodzakelijk
  * ingrediënt dat je oppakt eet hij op, en dan groeit hij. Vechten helpt niet;
- * de enige oplossing is bij het bord je mand leegmaken. */
+ * de enige oplossing is bij het bord je mand leegmaken.
+ *
+ * Hij is een grap, geen tegenstander. Daarom groeit hij traag, houdt hij op
+ * met groeien voor hij het beeld vult, en laat hij je na een hap ruim met
+ * rust. Een running gag die je echt begint te irriteren is geen running gag
+ * meer. */
 
 import * as THREE from 'three';
 import { emojiTextuur } from '../world/materialen.js';
@@ -58,7 +63,9 @@ export class ScopeCreep {
 
   eet() {
     this.gegeten++;
-    this.doelGrootte = 0.55 + this.gegeten * 0.62;
+    // afvlakkende groei met een plafond: hij wordt duidelijk groter, maar
+    // nooit zo groot dat hij het level in de weg staat
+    this.doelGrootte = Math.min(1.55, 0.5 + Math.sqrt(this.gegeten) * 0.42);
     const idx = Math.min(GEZICHTEN.length - 1, this.gegeten);
     this.gezicht.material.map?.dispose();
     this.gezicht.material.map = emojiTextuur(GEZICHTEN[idx]);
@@ -88,7 +95,8 @@ export class ScopeCreep {
       if (this.x < speler.x - 40) { this.actief = false; this.groep.visible = false; }
     } else {
       // hij haalt je nooit in als je doorloopt — hij haalt je in als je treuzelt
-      const snelheid = 2.4 + this.gegeten * 0.7;
+      // hij loopt altijd trager dan jij (loopSnelheid 7.6), ook volgegeten
+      const snelheid = 2.0 + Math.min(1.6, this.gegeten * 0.35);
       this.x += Math.sign(speler.x - this.x) * Math.min(snelheid * dt, Math.abs(speler.x - this.x));
       this.y += (speler.y - this.y) * Math.min(1, dt * 2);
     }
@@ -108,8 +116,8 @@ export class ScopeCreep {
     if (this.wegrollen || this.afkoeling > 0 || !this.actief) return false;
     const dx = Math.abs(speler.x - this.x);
     const dy = Math.abs((speler.y + 1) - (this.y + this.grootte));
-    if (dx < this.grootte + 0.6 && dy < this.grootte + 1.1) {
-      this.afkoeling = 1.6;
+    if (dx < this.grootte * 0.7 + 0.35 && dy < this.grootte + 0.9) {
+      this.afkoeling = 4.0;
       return true;
     }
     return false;

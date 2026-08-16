@@ -35,6 +35,9 @@ export const SUPERCAEK = {
   duur: 20,                // seconden in comicmodus bij Inspect & Adapt
   transformatie: 2.6,      // lengte van het anime-pauzemoment
   snelheidsbonus: 1.7,
+  // Hij hoort een slag groter te zijn dan Caek: dat is het hele punt van een
+  // transformatie. Groter dan dit en hij past niet meer onder de platforms.
+  hoogteFactor: 1.22,
 };
 
 /* Schakelaars voor grappen die misschien niet blijken te werken. Uit zetten

@@ -101,6 +101,9 @@ export class Streken {
       uniforms: {
         uKleur: { value: null },
         uTensor: { value: null },
+        uDiepte: { value: null },
+        uCam: { value: new THREE.Vector2(0.5, 300) },
+        uMasker: { value: new THREE.Vector3(12.0, 42.0, 0.45) },
         uResolutie: { value: new THREE.Vector2(1, 1) },
         uVerschuiving: { value: new THREE.Vector2() },
         uLengte: { value: 1 },
@@ -177,8 +180,8 @@ export class Streken {
 
       laag.geo.setAttribute('aAnker', new THREE.InstancedBufferAttribute(ankers, 2));
       laag.geo.setAttribute('aWillekeur', new THREE.InstancedBufferAttribute(willekeur, 4));
-      laag.geo.instanceCount = aantal;
       laag.aantal = aantal;
+      laag.geo.instanceCount = Math.max(1, Math.round(aantal * (this.deel ?? 1)));
       laag.vorige = { lengte: laag.config.lengte, breedte: laag.config.breedte, dichtheid: laag.config.dichtheid };
       this.aantalStreken += aantal;
     }
@@ -242,6 +245,25 @@ export class Streken {
    * @param {THREE.Texture} tensor   het gladde flowveld
    * @param {THREE.Vector2} verschuiving  camerapan in schermbreedtes
    */
+  /**
+   * Hetzelfde dieptemasker als de filterketen. Halen die op het spelvlak of
+   * ervoor vallen worden hier al in de vertex-shader weggegooid, dus dit is
+   * niet alleen netter maar ook meteen goedkoper.
+   */
+  zetMasker(diepteKaart, nabij, ver) {
+    this.diepteKaart = diepteKaart;
+    this.camNabij = nabij;
+    this.camVer = ver;
+  }
+
+  /** Hoeveel van de gestrooide halen daadwerkelijk getekend worden (0..1). */
+  zetDeel(deel) {
+    this.deel = Math.max(0.05, Math.min(1, deel));
+    for (const laag of this.lagen || []) {
+      laag.geo.instanceCount = Math.max(1, Math.round(laag.aantal * this.deel));
+    }
+  }
+
   render(kleur, tensor, verschuiving) {
     this.grondlaag.material.uniforms.uKleur.value = kleur;
     for (const laag of this.lagen) {
@@ -249,6 +271,10 @@ export class Streken {
       u.uKleur.value = kleur;
       u.uTensor.value = tensor;
       u.uVerschuiving.value.copy(verschuiving);
+      if (this.diepteKaart) {
+        u.uDiepte.value = this.diepteKaart;
+        u.uCam.value.set(this.camNabij, this.camVer);
+      }
     }
     const wasAutoClear = this.renderer.autoClear;
     this.renderer.autoClear = true;
