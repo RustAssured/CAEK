@@ -314,3 +314,32 @@ export const AFSCHEID = {
 export const AFTITELING = [];
 
 export const SLOGAN = 'BETERE INGREDIËNTEN, BETER RESULTAAT!';
+
+/* ------------------------------------------------------------------ *
+ * De geschilderde achtergrond
+ * ------------------------------------------------------------------ */
+
+/* Drie parallaxlagen, elk één brede tegel die horizontaal herhaalt.
+ *
+ * `hoogteDeel` is hoe hoog één tegel in beeld staat, als deel van de
+ * schermhoogte -- 1.0 vult het beeld precies. Met opzet niet in
+ * wereldeenheden: een plaat op dertig eenheden diepte krijgt een beeld te
+ * zien dat drie keer zo breed is, dus dezelfde wereldmaat zou daar drie keer
+ * zo klein uitvallen. Schermgerelateerd blijft het kloppen, ongeacht diepte.
+ *
+ * `factor` is hoe hard de laag meebeweegt: 0 staat oneindig ver weg en
+ * verschuift niet, 1 plakt aan het spelvlak. `bodem` is waar de onderrand van
+ * de plaat in de wereld landt -- dat is wel een wereldmaat, want de horizon
+ * hoort vast te liggen ten opzichte van de grond.
+ *
+ * Deze platen zijn al geschilderd, dus ze krijgen geen olieverffilter overheen
+ * -- daar zou alleen pap van komen. Dat is precies waar het alfamasker uit
+ * render/composer.js voor is. */
+export const ACHTERGROND = {
+  map: './assets/achtergrond/',
+  lagen: [
+    { id: 'ver', z: -46, factor: 0.10, hoogteDeel: 0.72, bodem: -6.5 },
+    { id: 'midden', z: -30, factor: 0.26, hoogteDeel: 0.50, bodem: -1.8 },
+    { id: 'dichtbij', z: -17, factor: 0.50, hoogteDeel: 0.58, bodem: -2.4 },
+  ],
+};

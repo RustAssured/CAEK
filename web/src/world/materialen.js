@@ -55,14 +55,17 @@ export function verf(kleur, { emissief = 0.16, plat = false, doorzichtig = 0, du
  * Werkt alleen op ondoorzichtige materialen: bij transparante materialen gaat
  * het alfakanaal op in de blending en komt er niets van terecht.
  */
-export function maskeer(doel, sterkte = 0.12) {
+export function maskeer(doel, sterkte = 0.12, { forceer = false } = {}) {
   const materialen = [];
   if (doel?.isMaterial) materialen.push(doel);
   else doel?.traverse?.((o) => { if (o.isMesh && o.material) materialen.push(o.material); });
 
   for (const origineel of materialen) {
     if (origineel.userData?.maskerSterkte === sterkte) continue;
-    if (origineel.transparent) continue;   // zie hierboven: heeft geen zin
+    // Bij transparante materialen gaat het alfakanaal normaal op in de
+    // blending. Wie zijn blending zo instelt dat alfa toch vastligt, mag
+    // forceren -- de achtergrondplaten doen dat.
+    if (origineel.transparent && !forceer) continue;
     const m = origineel;
     m.userData = { ...m.userData, maskerSterkte: sterkte };
     m.onBeforeCompile = (shader) => {

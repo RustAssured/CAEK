@@ -13,6 +13,7 @@
 
 import * as props from '../../world/props.js';
 import { PALET } from '../../world/materialen.js';
+import { zetAchtergrond, zetProcedureleAchtergrond } from '../../world/achtergrond.js';
 import { SECTIES, WERELD_EINDE } from '../../config.js';
 import { bouwPlanning } from './planning.js';
 import { bouwSprint1, bouwSprint2, bouwSprint3, bouwSprint4 } from './sprints.js';
@@ -21,7 +22,7 @@ import { taakInspect } from './inspect.js';
 import { sectie } from './gereedschap.js';
 
 export function bouwLevel(level, spel) {
-  decor(level);
+  decor(level, spel);
 
   bouwPlanning(level, spel);
 
@@ -52,17 +53,23 @@ export function bouwLevel(level, spel) {
  * Decor over de hele wereld
  * ------------------------------------------------------------------ */
 
-function decor(level) {
-  const achter = props.achtergrondBakkerij(WERELD_EINDE + 80, 7);
-  level.plaats(achter, WERELD_EINDE / 2, 0, 0);
+/* De geschilderde platen komen asynchroon binnen. Zolang ze er niet zijn staat
+ * de procedurele achtergrond er, en die wordt opgeruimd zodra de platen laden
+ * -- anders zie je de blokkendozen door de schilderijen heen. */
+function decor(level, spel) {
+  const terugval = [];
+  const merk = level.scene.children.length;
+  zetProcedureleAchtergrond(level);
+  for (let i = merk; i < level.scene.children.length; i++) terugval.push(level.scene.children[i]);
 
-  for (let x = 6; x < WERELD_EINDE; x += 27) {
-    const boom = props.cipres(7 + (x % 5));
-    level.plaats(boom, x + (x % 7), -0.4, -13 - (x % 4));
-  }
-  for (let x = 14; x < WERELD_EINDE; x += 19) {
-    level.plaats(props.lantaarn(4.6), x, 0, -3.4);
-  }
+  zetAchtergrond(level.scene, level).then((gelukt) => {
+    if (!gelukt) return;
+    for (const o of terugval) o.removeFromParent();
+    // de lantaarnpalen langs de weg blijven wel: die staan vóór het spelvlak
+    for (let x = 14; x < WERELD_EINDE; x += 34) {
+      level.plaats(props.lantaarn(4.6), x, 0, -3.4);
+    }
+  });
 }
 
 /* ------------------------------------------------------------------ *
