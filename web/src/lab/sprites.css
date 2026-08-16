@@ -1,0 +1,156 @@
+/* CAEK — sprite-lab. Sober, want alles wat hier kleur heeft leidt af van de
+   tekeningen waar je naar wilt kijken. */
+
+:root {
+  --blauw-diep: #0b1640;
+  --blauw: #17307d;
+  --blauw-licht: #3f63c9;
+  --goud: #f5b229;
+  --goud-licht: #ffd873;
+  --room: #fdf3d8;
+  --rand: 3px solid var(--goud);
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  padding: 0 0 4rem;
+  background: #070d24;
+  color: var(--room);
+  font: 15px/1.5 system-ui, sans-serif;
+}
+
+header {
+  padding: 1.4rem clamp(1rem, 4vw, 3rem) 0.8rem;
+}
+h1 {
+  margin: 0;
+  font: 700 clamp(22px, 3vw, 34px)/1.1 "Arial Black", sans-serif;
+  letter-spacing: .04em;
+  color: var(--goud-licht);
+}
+#samenvatting { margin: .4rem 0 0; opacity: .75; }
+
+h2 {
+  margin: 2.2rem 0 .3rem;
+  font: 700 clamp(15px, 1.8vw, 19px)/1.2 "Arial Black", sans-serif;
+  letter-spacing: .08em;
+  color: var(--goud);
+}
+.uitleg { margin: 0 0 1rem; opacity: .7; max-width: 62ch; }
+
+/* ------------------------------- balk ------------------------------- */
+
+#balk {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  display: flex;
+  flex-wrap: wrap;
+  gap: .6rem 1.4rem;
+  align-items: center;
+  padding: .7rem clamp(1rem, 4vw, 3rem);
+  background: rgba(11, 22, 64, .94);
+  border-bottom: 2px solid rgba(245, 178, 41, .35);
+  backdrop-filter: blur(6px);
+}
+#balk label { display: flex; align-items: center; gap: .45rem; white-space: nowrap; }
+#balk input[type=range] { width: 128px; accent-color: var(--goud); }
+#balk output { min-width: 2.6em; text-align: right; color: var(--goud-licht); font-variant-numeric: tabular-nums; }
+#balk select {
+  background: var(--blauw-diep); color: var(--room);
+  border: 2px solid var(--blauw-licht); border-radius: 8px; padding: .2rem .4rem;
+}
+#balk button {
+  background: var(--blauw); color: var(--room);
+  border: 2px solid var(--blauw-licht); border-radius: 8px;
+  padding: .3rem .8rem; cursor: pointer; font: inherit;
+}
+#balk button:hover { background: var(--blauw-licht); }
+
+main { padding: 0 clamp(1rem, 4vw, 3rem); }
+
+/* ---------------------------- de spelers ---------------------------- */
+
+.podium {
+  display: flex;
+  align-items: flex-end;
+  gap: clamp(1rem, 4vw, 3.5rem);
+  padding: 1.4rem 1.6rem 0;
+  border: var(--rand);
+  border-radius: 14px;
+  overflow-x: auto;
+}
+
+.rooster {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  gap: 1rem;
+  margin: 0 0 1.6rem;
+  padding: 1rem;
+  border: 2px solid rgba(63, 99, 201, .5);
+  border-radius: 14px;
+}
+.rooster h3 {
+  grid-column: 1 / -1;
+  margin: 0;
+  font: 700 15px/1 "Arial Black", sans-serif;
+  letter-spacing: .1em;
+  color: var(--goud-licht);
+}
+
+.speler {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: .4rem;
+}
+.speler .naam { font-size: 12px; letter-spacing: .08em; opacity: .8; text-transform: uppercase; }
+.speler .naam b { color: var(--goud-licht); }
+
+/* De doos waar de sprite in staat. De strip wordt als achtergrond gezet en
+   per frame opgeschoven -- geen canvas nodig, en zo blijft het scherp. */
+.doos {
+  position: relative;
+  background-repeat: no-repeat;
+  image-rendering: auto;
+}
+.doos.gespiegeld { transform: scaleX(-1); }
+
+.vloer {
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding-bottom: 2px;
+  border-bottom: 2px dashed rgba(255, 216, 115, .45);
+}
+.vloer.geen-lijn { border-bottom-color: transparent; }
+
+/* achtergronden om tegenaan te kijken */
+.achter-nacht { background-color: #0d1b4c; }
+.achter-licht { background-color: #cdd8f2; }
+.achter-verf {
+  background-color: #17307d;
+  background-image:
+    radial-gradient(closest-side at 30% 25%, rgba(255, 216, 115, .35), transparent 70%),
+    radial-gradient(closest-side at 74% 62%, rgba(63, 99, 201, .55), transparent 70%),
+    repeating-linear-gradient(115deg, rgba(255,255,255,.05) 0 6px, transparent 6px 13px);
+}
+.achter-ruit {
+  background-color: #2a3f7e;
+  background-image:
+    linear-gradient(45deg, rgba(255,255,255,.09) 25%, transparent 25%, transparent 75%, rgba(255,255,255,.09) 75%),
+    linear-gradient(45deg, rgba(255,255,255,.09) 25%, transparent 25%, transparent 75%, rgba(255,255,255,.09) 75%);
+  background-size: 22px 22px;
+  background-position: 0 0, 11px 11px;
+}
+
+.fout {
+  margin: 2rem clamp(1rem, 4vw, 3rem);
+  padding: 1rem 1.2rem;
+  border: 3px solid #cf3a2c;
+  border-radius: 12px;
+  background: rgba(207, 58, 44, .12);
+}

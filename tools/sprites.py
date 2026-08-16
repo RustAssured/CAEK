@@ -1,175 +1,275 @@
 #!/usr/bin/env python3
 """
-Maakt van een getekend contactvel een spriteblad dat de game kan afspelen.
+Maakt van een getekend spritesheet losse animatiestrips die de game afspeelt.
 
-Je levert bijvoorbeeld een walk cycle als raster van 5 x 2 met genummerde
-badges op een witte achtergrond. Dit script:
+De vellen zijn contactvellen: vier rijen onder elkaar (WALK, IDLE, JUMP,
+CHEER), elk met een eigen aantal frames, genummerde badges, een kopje in
+tekst, stippellijnen ertussen en een lichte achtergrond. Niets daarvan staat
+op een net raster -- Caek loopt op tien frames, Cupcaek op zeven -- dus het
+script zoekt de rijen en de kolommen zelf op in plaats van ze aan te nemen.
 
-  1. knipt het raster in losse frames
-  2. gooit de genummerde badge weg
-  3. maakt de witte achtergrond transparant (flood fill vanaf de rand, zodat
-     wit *in* het karakter blijft staan)
-  4. lijnt de frames op elkaar uit -- dit is het belangrijkste deel, zie hieronder
-  5. schrijft een horizontale strip die de game rechtstreeks inleest
-  6. schrijft een geanimeerde GIF zodat je kunt kijken of het loopt
+Wat er gebeurt:
+
+  1. achtergrond wegsnijden op kleurafstand, met de randen zacht en zonder
+     lichte halo (de randpixels worden teruggerekend naar hun eigen kleur)
+  2. losse kleine vlekjes weggooien: badges, kopjes, stippellijnen
+  3. rijen vinden via een projectie op de y-as, kolommen per rij op de x-as
+  4. de frames binnen een rij op elkaar uitlijnen
+  5. per rij een horizontale strip schrijven, plus een GIF om naar te kijken
+  6. een manifest schrijven dat het sprite-lab en de game inlezen
 
 Over stap 4: tekeningen die frame voor frame los gemaakt zijn staan nooit
-precies gelijk. Het karakter staat een paar pixels hoger, is net iets groter,
-schuift opzij. Speel je dat af, dan trilt het. Daarom wordt elk frame
-geschaald op de hoogte van het bovenlijf, horizontaal gecentreerd op het
-zwaartepunt van dat bovenlijf (de benen zwaaien, de romp niet) en verticaal op
-de voeten gezet. Wat overblijft is de beweging die je getekend hebt.
+precies gelijk. Speel je dat af, dan trilt het. Elk frame wordt daarom
+geschaald op de hoogte van het bovenlijf -- die verandert tijdens een looppas
+nauwelijks, terwijl de totale hoogte juist wel op en neer gaat, en dat is de
+beweging die je wilt houden. Daarna horizontaal centreren op het zwaartepunt
+van de romp (de benen zwaaien, de romp niet) en de voeten op een vaste
+grondlijn.
 
 Gebruik:
-    python3 tools/sprites.py assets/sprites/caek_lopen.png --raster 5x2
-    python3 tools/sprites.py bron.png --raster 5x2 --naam caek_lopen --badge 0.22
-    python3 tools/sprites.py bron.png --raster 1x1 --naam caek_idle --geen-uitlijning
-
-Uitvoer:
-    web/assets/sprites/<naam>_<aantal>.png     de strip
-    web/assets/sprites/<naam>_preview.gif      om naar te kijken
+    python3 tools/sprites.py                       # alles in assets/sprites/
+    python3 tools/sprites.py --vel "assets/sprites/alle cycles Caek.png" \\
+                             --naam caek --rijen lopen,idle,springen,juichen
 """
 
 import argparse
+import json
 import os
+import re
 import sys
-from collections import deque
 
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+BRON = os.path.join(REPO, "assets", "sprites")
 UIT = os.path.join(REPO, "web", "assets", "sprites")
 
 try:
+    import numpy as np
     from PIL import Image
-except ImportError:
-    print("Pillow is nodig: pip install pillow", file=sys.stderr)
+    from scipy import ndimage
+except ImportError as fout:
+    print(f"nodig: pillow, numpy, scipy ({fout})", file=sys.stderr)
     raise SystemExit(1)
 
 
+# De volgorde waarin de rijen op de vellen staan. Het kopje in beeld is tekst
+# en die lezen we niet; de volgorde is bij alle drie de vellen gelijk.
+RIJNAMEN = ["lopen", "idle", "springen", "juichen"]
+
+# Welk vel bij welk karakter hoort. Op naam herkennen, want de bestandsnamen
+# komen met spaties en hoofdletters binnen zoals ze getekend zijn.
+KARAKTERS = {
+    "caek": ["caek"],
+    "supercaek": ["supercaek", "super"],
+    "cupcaek": ["cupcaek", "cup"],
+}
+
+
 # ------------------------------------------------------------------ #
-# Achtergrond weghalen
+# Achtergrond wegsnijden
 # ------------------------------------------------------------------ #
 
-def maak_transparant(afbeelding, drempel=232, marge=26):
+def snij_achtergrond(vel, tolerantie=26, zacht=16):
     """
-    Flood fill vanaf de rand: alles wat licht is én vanaf buiten bereikbaar,
-    wordt transparant. Wit binnen het karakter -- een lichtje in het oog, een
-    glans op de schoen -- blijft dus gewoon staan.
+    Alles wat op de achtergrondkleur lijkt én vanaf de rand bereikbaar is,
+    wordt doorzichtig. Bereikbaar-vanaf-de-rand is belangrijk: wit *in* het
+    karakter -- een glimlichtje in een oog -- moet blijven staan.
+
+    De randpixels van een tekening zijn een mengsel van karakter en
+    achtergrond. Laat je die op hun gemengde kleur staan, dan krijg je een
+    lichte rand tegen de donkerblauwe wereld. Daarom worden ze teruggerekend
+    naar de kleur die ze zonder achtergrond gehad zouden hebben.
     """
-    afbeelding = afbeelding.convert("RGBA")
-    b, h = afbeelding.size
-    px = afbeelding.load()
+    arr = np.asarray(vel.convert("RGB"), dtype=np.float32)
+    h, b, _ = arr.shape
 
-    def licht(x, y):
-        r, g, bl, a = px[x, y]
-        return a > 0 and r >= drempel and g >= drempel and bl >= drempel
+    rand = np.concatenate([arr[0], arr[-1], arr[:, 0], arr[:, -1]])
+    grond = np.median(rand, axis=0)
 
-    gezien = bytearray(b * h)
-    rij = deque()
-    for x in range(b):
-        for y in (0, h - 1):
-            if licht(x, y):
-                rij.append((x, y))
-                gezien[y * b + x] = 1
-    for y in range(h):
-        for x in (0, b - 1):
-            if licht(x, y):
-                rij.append((x, y))
-                gezien[y * b + x] = 1
+    afstand = np.abs(arr - grond).max(axis=2)
 
-    while rij:
-        x, y = rij.popleft()
-        px[x, y] = (255, 255, 255, 0)
-        for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1)):
-            nx, ny = x + dx, y + dy
-            if 0 <= nx < b and 0 <= ny < h and not gezien[ny * b + nx] and licht(nx, ny):
-                gezien[ny * b + nx] = 1
-                rij.append((nx, ny))
+    # zachte overgang: onder `tolerantie` volledig achtergrond, daarboven
+    # loopt hij in `zacht` stappen naar volledig karakter
+    alfa = np.clip((afstand - tolerantie) / max(zacht, 1), 0.0, 1.0)
 
-    # randjes van de anti-aliasing: bijna-wit dat blijft staan leest als een
-    # vies halo tegen de donkerblauwe wereld
-    px = afbeelding.load()
-    for y in range(h):
-        for x in range(b):
-            r, g, bl, a = px[x, y]
-            if a and r >= drempel - marge and g >= drempel - marge and bl >= drempel - marge:
-                buur_leeg = any(
-                    0 <= x + dx < b and 0 <= y + dy < h and px[x + dx, y + dy][3] == 0
-                    for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1))
-                )
-                if buur_leeg:
-                    px[x, y] = (r, g, bl, 0)
-    return afbeelding
+    # Ingesloten wit -- de spleet tussen twee voeten, maar ook het glimlichtje
+    # in een oog -- gaat er hier allemaal uit. Welke daarvan terug moet, is op
+    # velniveau niet te zien: een spleet en een glimlicht zijn even klein en
+    # even compact. Wat ze wél onderscheidt is waar ze zitten, en dat weten we
+    # pas als de frames uitgeknipt zijn. Zie vul_glimlichten().
+
+    # halo weg: kleur terugrekenen alsof de achtergrond er niet was. Waar
+    # niets staat blijft de oorspronkelijke kleur bewaard, want een glimlicht
+    # dat straks terugkomt moet nog wit zijn en niet zwart.
+    veilig = np.maximum(alfa, 0.25)[..., None]
+    ontmengd = np.clip((arr - (1.0 - alfa[..., None]) * grond) / veilig, 0, 255)
+    kleur = np.where(alfa[..., None] > 0.0, ontmengd, arr)
+
+    uit = np.dstack([kleur, alfa * 255.0]).astype(np.uint8)
+    return Image.fromarray(uit, "RGBA")
 
 
-def wis_badge(frame, deel=0.22):
-    """Gum de linkerbovenhoek uit; daar zit het nummertje en nooit het karakter."""
-    b, h = frame.size
-    hoek = Image.new("RGBA", (int(b * deel), int(h * deel)), (255, 255, 255, 0))
-    frame.paste(hoek, (0, 0))
-    return frame
+def vul_glimlichten(frame, gatgrens=420):
+    """
+    Zet ingesloten wit terug dat een glimlichtje is, en laat de rest weg.
+
+    Onderscheid op positie: ogen zitten in de bovenste helft van een figuur,
+    de spleet tussen twee voeten in de onderste. Daar komt nog bij dat een
+    glimlicht ongeveer even breed als hoog is en een spleet langgerekt.
+
+    Dit kan pas als het frame uitgeknipt is -- op een heel contactvel weet je
+    niet welk gat bij welk figuur hoort, laat staan hoe hoog het erin zit.
+    """
+    arr = np.array(frame)
+    leeg = arr[..., 3] < 8
+    labels, n = ndimage.label(leeg)
+    if not n:
+        return frame
+
+    randlabels = set(labels[0].tolist()) | set(labels[-1].tolist())
+    randlabels |= set(labels[:, 0].tolist()) | set(labels[:, -1].tolist())
+    randlabels.discard(0)
+
+    maten = ndimage.sum(leeg, labels, range(1, n + 1))
+    dozen = ndimage.find_objects(labels)
+    hoogte = arr.shape[0]
+
+    terug = set()
+    for i, m in enumerate(maten):
+        if (i + 1) in randlabels or m >= gatgrens:
+            continue
+        doos = dozen[i]
+        if doos is None:
+            continue
+        hh = doos[0].stop - doos[0].start
+        bb = doos[1].stop - doos[1].start
+        midden = (doos[0].start + doos[0].stop) / 2
+        if midden > hoogte * 0.55:      # onderin: spleet tussen benen of voeten
+            continue
+        if hh / max(bb, 1) > 1.8:       # langgerekt: ook een spleet
+            continue
+        terug.add(i + 1)
+
+    if terug:
+        arr[..., 3] = np.where(np.isin(labels, list(terug)), 255, arr[..., 3])
+    return Image.fromarray(arr, "RGBA")
+
+
+def gooi_vlekjes_weg(afbeelding, minimum=900):
+    """
+    Badges, kopjes en stippellijnen zijn kleine losse vlekjes; een karakter is
+    een groot samenhangend geheel. Alles onder de drempel gaat eruit.
+    """
+    arr = np.array(afbeelding)
+    massief = arr[..., 3] > 24
+    labels, n = ndimage.label(massief)
+    if not n:
+        return afbeelding, 0
+    maten = ndimage.sum(massief, labels, range(1, n + 1))
+    weg = {i + 1 for i, m in enumerate(maten) if m < minimum}
+    if weg:
+        arr[..., 3] = np.where(np.isin(labels, list(weg)), 0, arr[..., 3])
+    return Image.fromarray(arr, "RGBA"), len(weg)
+
+
+# ------------------------------------------------------------------ #
+# Rijen en kolommen zoeken
+# ------------------------------------------------------------------ #
+
+def banden(profiel, minimum_gat, minimum_maat):
+    """Aaneengesloten stukken waar iets staat, met kleine gaten dichtgeplakt."""
+    aan = profiel > 0
+    stukken = []
+    begin = None
+    for i, v in enumerate(aan):
+        if v and begin is None:
+            begin = i
+        elif not v and begin is not None:
+            stukken.append([begin, i])
+            begin = None
+    if begin is not None:
+        stukken.append([begin, len(aan)])
+
+    samen = []
+    for s in stukken:
+        if samen and s[0] - samen[-1][1] <= minimum_gat:
+            samen[-1][1] = s[1]
+        else:
+            samen.append(s)
+    return [s for s in samen if s[1] - s[0] >= minimum_maat]
+
+
+def vind_rijen(afbeelding):
+    a = np.array(afbeelding)[..., 3] > 24
+    return banden(a.sum(axis=1), minimum_gat=14, minimum_maat=70)
+
+
+def vind_kolommen(rijbeeld):
+    """
+    Kolommen zoeken, en te brede kolommen alsnog opsplitsen.
+
+    Twee frames die elkaar net raken -- bij Caek doen frame 9 en 10 dat --
+    komen er anders als één plaatje uit, en dan mist er een frame en is er
+    één twee keer zo breed. Een kolom die veel breder is dan de rest wordt
+    daarom doorgeknipt op zijn dunste plek.
+    """
+    profiel = (np.array(rijbeeld)[..., 3] > 24).sum(axis=0)
+    ruw = banden(profiel, minimum_gat=8, minimum_maat=28)
+    if len(ruw) < 2:
+        return ruw
+
+    normaal = float(np.median([x1 - x0 for x0, x1 in ruw]))
+    uit = []
+    for x0, x1 in ruw:
+        breedte = x1 - x0
+        stukken = max(1, round(breedte / normaal))
+        if stukken < 2 or breedte < normaal * 1.5:
+            uit.append([x0, x1])
+            continue
+        # knip op de dunste plek rond elke verwachte grens
+        grenzen = [x0]
+        for k in range(1, stukken):
+            mik = x0 + round(breedte * k / stukken)
+            speling = max(4, int(normaal * 0.2))
+            a = max(x0 + 4, mik - speling)
+            b = min(x1 - 4, mik + speling)
+            grenzen.append(a + int(np.argmin(profiel[a:b])) if b > a else mik)
+        grenzen.append(x1)
+        for i in range(stukken):
+            uit.append([grenzen[i], grenzen[i + 1]])
+    return uit
 
 
 # ------------------------------------------------------------------ #
 # Uitlijnen
 # ------------------------------------------------------------------ #
 
-def kader(frame):
+def meet(frame):
     doos = frame.getbbox()
-    return doos
-
-
-def zwaartepunt_boven(frame, doos, deel=0.55):
-    """Horizontaal zwaartepunt van het bovenste deel: de romp, niet de benen."""
+    if not doos:
+        return None
     x0, y0, x1, y1 = doos
-    hoogte = int((y1 - y0) * deel)
-    strook = frame.crop((x0, y0, x1, y0 + max(1, hoogte)))
-    alfa = strook.getchannel("A")
-    som = 0
-    gewicht = 0
-    data = alfa.load()
-    b, h = strook.size
-    for y in range(h):
-        for x in range(b):
-            a = data[x, y]
-            if a:
-                som += x * a
-                gewicht += a
-    return x0 + (som / gewicht if gewicht else b / 2)
+    alfa = np.array(frame.crop(doos))[..., 3].astype(np.float32)
+    # zwaartepunt van het bovenlijf: de romp staat stil, de benen zwaaien
+    boven = alfa[: max(1, int(alfa.shape[0] * 0.55))]
+    kolomgewicht = boven.sum(axis=0)
+    totaal = kolomgewicht.sum()
+    midden = x0 + (np.arange(len(kolomgewicht)) * kolomgewicht).sum() / totaal if totaal else (x0 + x1) / 2
+    return {"doos": doos, "romp": (y1 - y0) * 0.55, "midden": midden, "bodem": y1}
 
 
-def lijn_uit(frames, doelbreedte=None, doelhoogte=None, marge=0.06):
-    """
-    Zet elk frame op dezelfde schaal en dezelfde grondlijn.
-
-    Schaal komt van de hoogte van het bovenlijf: die verandert tijdens een
-    looppas nauwelijks, terwijl de totale hoogte juist wel op en neer gaat --
-    en dat laatste is de beweging die je wilt hóuden, niet wegpoetsen.
-    """
-    metingen = []
-    for f in frames:
-        doos = kader(f)
-        if not doos:
-            metingen.append(None)
-            continue
-        x0, y0, x1, y1 = doos
-        romp = (y1 - y0) * 0.55
-        metingen.append({
-            "doos": doos,
-            "romp": romp,
-            "midden": zwaartepunt_boven(f, doos),
-            "bodem": y1,
-        })
-
+def lijn_uit(frames, marge=0.07):
+    metingen = [meet(f) for f in frames]
     geldig = [m for m in metingen if m]
     if not geldig:
         return frames
 
-    doelromp = sum(m["romp"] for m in geldig) / len(geldig)
-    # hoe hoog en breed het uiteindelijke frame wordt
-    hoogtes = [(m["doos"][3] - m["doos"][1]) * (doelromp / m["romp"]) for m in geldig]
-    breedtes = [(m["doos"][2] - m["doos"][0]) * (doelromp / m["romp"]) for m in geldig]
-    H = doelhoogte or int(max(hoogtes) * (1 + marge * 2))
-    B = doelbreedte or int(max(breedtes) * (1 + marge * 2))
+    doelromp = float(np.median([m["romp"] for m in geldig]))
+    schalen = [doelromp / m["romp"] for m in geldig]
+    hoogtes = [(m["doos"][3] - m["doos"][1]) * s for m, s in zip(geldig, schalen)]
+    breedtes = [(m["doos"][2] - m["doos"][0]) * s for m, s in zip(geldig, schalen)]
+
+    H = int(max(hoogtes) * (1 + marge * 2))
+    B = int(max(breedtes) * (1 + marge * 2))
     grondlijn = int(H * (1 - marge))
 
     uit = []
@@ -177,94 +277,123 @@ def lijn_uit(frames, doelbreedte=None, doelhoogte=None, marge=0.06):
         vel = Image.new("RGBA", (B, H), (0, 0, 0, 0))
         if m:
             s = doelromp / m["romp"]
-            nieuw = f.resize((max(1, int(f.width * s)), max(1, int(f.height * s))), Image.LANCZOS)
-            # het frame zo plakken dat de voeten op de grondlijn staan en het
-            # zwaartepunt van de romp in het midden
-            dx = int(B / 2 - m["midden"] * s)
-            dy = int(grondlijn - m["bodem"] * s)
-            vel.paste(nieuw, (dx, dy), nieuw)
+            nieuw = f.resize((max(1, round(f.width * s)), max(1, round(f.height * s))), Image.LANCZOS)
+            vel.alpha_composite(nieuw, (round(B / 2 - m["midden"] * s), round(grondlijn - m["bodem"] * s)))
         uit.append(vel)
     return uit
 
 
-def zet_naast_elkaar(frames):
+def strip(frames):
     B, H = frames[0].size
-    strip = Image.new("RGBA", (B * len(frames), H), (0, 0, 0, 0))
+    vel = Image.new("RGBA", (B * len(frames), H), (0, 0, 0, 0))
     for i, f in enumerate(frames):
-        strip.paste(f, (i * B, 0), f)
-    return strip
+        vel.alpha_composite(f, (i * B, 0))
+    return vel
+
+
+def schrijf_gif(frames, pad, fps=12):
+    plaatjes = []
+    for f in frames:
+        vlak = Image.new("RGBA", f.size, (13, 27, 76, 255))
+        vlak.alpha_composite(f)
+        plaatjes.append(vlak.convert("P", palette=Image.ADAPTIVE))
+    plaatjes[0].save(pad, save_all=True, append_images=plaatjes[1:],
+                     duration=round(1000 / fps), loop=0, disposal=2)
 
 
 # ------------------------------------------------------------------ #
 
+def karakter_van(bestandsnaam):
+    laag = bestandsnaam.lower()
+    for naam, sleutels in KARAKTERS.items():
+        if naam == "caek" and any(s in laag for s in ("supercaek", "cupcaek")):
+            continue
+        if any(s in laag for s in sleutels):
+            return naam
+    return re.sub(r"[^a-z0-9]+", "", laag.split(".")[0]) or "onbekend"
+
+
+def verwerk(pad, naam, rijnamen, hoogte, fps, vlekdrempel, formaat, kwaliteit, gatgrens):
+    vel = Image.open(pad)
+    print(f"\n{os.path.basename(pad)} -> {naam}  ({vel.width}x{vel.height})")
+
+    schoon = snij_achtergrond(vel)
+    schoon, weggegooid = gooi_vlekjes_weg(schoon, vlekdrempel)
+    print(f"  achtergrond weg, {weggegooid} vlekjes opgeruimd (badges, kopjes, stippellijnen)")
+
+    rijen = vind_rijen(schoon)
+    print(f"  rijen gevonden: {len(rijen)}")
+
+    resultaat = {}
+    for i, (y0, y1) in enumerate(rijen):
+        rijnaam = rijnamen[i] if i < len(rijnamen) else f"rij{i + 1}"
+        rijbeeld = schoon.crop((0, y0, schoon.width, y1))
+        kolommen = vind_kolommen(rijbeeld)
+        frames = [rijbeeld.crop((x0, 0, x1, rijbeeld.height)) for x0, x1 in kolommen]
+        frames = [vul_glimlichten(f, gatgrens) for f in frames if f.getbbox()]
+        if not frames:
+            continue
+
+        frames = lijn_uit(frames)
+        if hoogte and frames[0].height != hoogte:
+            s = hoogte / frames[0].height
+            frames = [f.resize((max(1, round(f.width * s)), hoogte), Image.LANCZOS) for f in frames]
+
+        os.makedirs(UIT, exist_ok=True)
+        # WebP met alfa: een PNG-strip van tien frames loopt tegen de megabyte
+        # aan, en twaalf van die strips wil je niemand door de firewall sturen.
+        bestand = f"{naam}_{rijnaam}_{len(frames)}.{formaat}"
+        vell = strip(frames)
+        if formaat == "webp":
+            vell.save(os.path.join(UIT, bestand), quality=kwaliteit, method=6)
+        else:
+            vell.save(os.path.join(UIT, bestand), optimize=True)
+        schrijf_gif(frames, os.path.join(UIT, f"{naam}_{rijnaam}_preview.gif"), fps)
+
+        kb = os.path.getsize(os.path.join(UIT, bestand)) / 1024
+        print(f"    {rijnaam:9s} {len(frames):2d} frames  {frames[0].width}x{frames[0].height}  {kb:5.0f} kB  -> {bestand}")
+        resultaat[rijnaam] = {
+            "bestand": bestand,
+            "frames": len(frames),
+            "breedte": frames[0].width,
+            "hoogte": frames[0].height,
+        }
+    return resultaat
+
+
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("bron")
-    ap.add_argument("--raster", default="1x1", help="kolommen x rijen, bijvoorbeeld 5x2")
-    ap.add_argument("--naam", help="uitvoernaam; standaard de bestandsnaam van de bron")
-    ap.add_argument("--badge", type=float, default=0.22, help="deel van het frame linksboven dat gewist wordt (0 = niet)")
-    ap.add_argument("--drempel", type=int, default=232, help="vanaf welke helderheid iets als achtergrond telt")
-    ap.add_argument("--geen-uitlijning", action="store_true")
-    ap.add_argument("--hoogte", type=int, default=320, help="hoogte van één frame in de strip")
-    ap.add_argument("--fps", type=int, default=12, help="tempo van de preview-GIF")
-    ap.add_argument("--overslaan", default="", help="frames die je niet wilt, 1-gebaseerd: 1,10")
+    ap.add_argument("--vel", action="append", help="één specifiek vel; standaard alles in assets/sprites/")
+    ap.add_argument("--naam", help="karakternaam bij --vel")
+    ap.add_argument("--rijen", default=",".join(RIJNAMEN))
+    ap.add_argument("--hoogte", type=int, default=288, help="hoogte van één frame in de strip")
+    ap.add_argument("--formaat", choices=["webp", "png"], default="webp")
+    ap.add_argument("--kwaliteit", type=int, default=88)
+    ap.add_argument("--gatgrens", type=int, default=420,
+                    help="ingesloten wit kleiner dan dit blijft staan (oogglimlicht); groter gaat eruit (ruimte tussen de benen)")
+    ap.add_argument("--fps", type=int, default=12)
+    ap.add_argument("--vlekdrempel", type=int, default=900, help="alles kleiner dan dit aantal pixels is een badge of een letter")
     args = ap.parse_args()
 
-    kolommen, rijen = (int(v) for v in args.raster.lower().split("x"))
-    naam = args.naam or os.path.splitext(os.path.basename(args.bron))[0]
-    overslaan = {int(v) for v in args.overslaan.split(",") if v.strip()}
+    rijnamen = [r.strip() for r in args.rijen.split(",") if r.strip()]
 
-    vel = Image.open(args.bron).convert("RGBA")
-    cb = vel.width / kolommen
-    ch = vel.height / rijen
-    print(f"bron: {vel.width}x{vel.height}, raster {kolommen}x{rijen} -> cel {cb:.0f}x{ch:.0f}")
-
-    frames = []
-    nummer = 0
-    for r in range(rijen):
-        for k in range(kolommen):
-            nummer += 1
-            if nummer in overslaan:
-                continue
-            cel = vel.crop((round(k * cb), round(r * ch), round((k + 1) * cb), round((r + 1) * ch)))
-            if args.badge > 0:
-                cel = wis_badge(cel, args.badge)
-            cel = maak_transparant(cel, args.drempel)
-            if cel.getbbox() is None:
-                print(f"  frame {nummer}: leeg, overgeslagen")
-                continue
-            frames.append(cel)
-
-    if not frames:
-        print("geen enkel frame bevatte iets", file=sys.stderr)
+    vellen = args.vel or sorted(
+        os.path.join(BRON, f) for f in os.listdir(BRON) if f.lower().endswith((".png", ".webp", ".jpg"))
+    )
+    if not vellen:
+        print(f"geen vellen gevonden in {BRON}", file=sys.stderr)
         return 1
-    print(f"frames gevonden: {len(frames)}")
 
-    if not args.geen_uitlijning:
-        frames = lijn_uit(frames)
-        print(f"uitgelijnd op {frames[0].width}x{frames[0].height}")
-
-    # naar de doelhoogte schalen; de game rekent toch in wereldhoogte
-    if args.hoogte and frames[0].height != args.hoogte:
-        s = args.hoogte / frames[0].height
-        frames = [f.resize((max(1, round(f.width * s)), args.hoogte), Image.LANCZOS) for f in frames]
+    manifest = {}
+    for pad in vellen:
+        naam = args.naam if (args.vel and args.naam) else karakter_van(os.path.basename(pad))
+        manifest[naam] = verwerk(pad, naam, rijnamen, args.hoogte, args.fps, args.vlekdrempel,
+                                 args.formaat, args.kwaliteit, args.gatgrens)
 
     os.makedirs(UIT, exist_ok=True)
-    strip = zet_naast_elkaar(frames)
-    strippad = os.path.join(UIT, f"{naam}_{len(frames)}.png")
-    strip.save(strippad, optimize=True)
-    print(f"strip: {os.path.relpath(strippad, REPO)}  ({strip.width}x{strip.height}, {os.path.getsize(strippad)/1024:.0f} kB)")
-
-    # preview op een donkere ondergrond, want daar komt hij te staan
-    achter = []
-    for f in frames:
-        vlak = Image.new("RGBA", f.size, (13, 27, 76, 255))
-        vlak.alpha_composite(f)
-        achter.append(vlak.convert("P", palette=Image.ADAPTIVE))
-    gifpad = os.path.join(UIT, f"{naam}_preview.gif")
-    achter[0].save(gifpad, save_all=True, append_images=achter[1:],
-                   duration=round(1000 / args.fps), loop=0, disposal=2)
-    print(f"preview: {os.path.relpath(gifpad, REPO)}")
+    with open(os.path.join(UIT, "manifest.json"), "w", encoding="utf-8") as f:
+        json.dump(manifest, f, indent=2, ensure_ascii=False)
+    print(f"\nmanifest: {os.path.relpath(os.path.join(UIT, 'manifest.json'), REPO)}")
     return 0
 
 

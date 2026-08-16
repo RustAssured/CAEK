@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CAEK — sprite-lab</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><text y='26' font-size='26'>🎞️</text></svg>">
+<link rel="stylesheet" href="./src/lab/sprites.css">
+</head>
+<body>
+
+<header>
+  <h1>Sprite-lab</h1>
+  <p id="samenvatting">bezig met laden…</p>
+</header>
+
+<div id="balk">
+  <label>tempo <input type="range" id="fps" min="2" max="24" step="1" value="12"><output id="fps-uit">12</output> fps</label>
+  <label>grootte <input type="range" id="schaal" min="60" max="420" step="10" value="200"><output id="schaal-uit">200</output> px</label>
+  <label>achtergrond
+    <select id="achtergrond">
+      <option value="nacht" selected>nachtblauw</option>
+      <option value="verf">geschilderd</option>
+      <option value="ruit">ruitjes</option>
+      <option value="licht">licht</option>
+    </select>
+  </label>
+  <label><input type="checkbox" id="spiegel"> gespiegeld</label>
+  <label><input type="checkbox" id="grondlijn" checked> grondlijn</label>
+  <button id="pauze">pauze</button>
+  <button id="terug">◀ frame</button>
+  <button id="vooruit">frame ▶</button>
+</div>
+
+<main>
+  <section id="vergelijk">
+    <h2>Naast elkaar, op ware verhouding</h2>
+    <p class="uitleg">Zoals ze in het spel naast elkaar staan. Hier zie je of de maatverhouding klopt voordat je hem in de wereld zet.</p>
+    <div class="podium" id="podium"></div>
+  </section>
+
+  <section id="alles">
+    <h2>Alle animaties</h2>
+    <div id="rasters"></div>
+  </section>
+</main>
+
+<script type="module" src="./src/lab/sprites.js"></script>
+</body>
+</html>
