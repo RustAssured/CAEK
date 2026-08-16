@@ -1,18 +1,22 @@
-/* CAEK — de HUD. Rechtsboven staat geen score maar een VALUE METER, en dat
- * is het hele punt van de game. */
+/* CAEK — de HUD.
+ *
+ * Rechtsboven staat geen scorebalk maar het Doelenwiel, en dat is het hele
+ * punt: alles wat je doet hangt aan een segment, en vier sprints lang zie je
+ * het voller worden. Eén meter met één betekenis.
+ *
+ * Waarde bestaat nog wel, maar die zie je pas bij Inspect & Adapt, als
+ * beloofd naast geleverd. Tussendoor krijg je alleen een gouden +N die
+ * opstijgt: dat is feedback, geen meter. */
 
-import { PI, WAARDE } from '../config.js';
-import { maakWiel } from './wiel.js';
+import { DOELENWIEL, PI } from '../config.js';
+import { maakWiel, verlichtWiel, pulsSegment } from './wiel.js';
 
 const $ = (s) => document.querySelector(s);
 
 export class Hud {
   constructor() {
     this.wortel = $('#hud');
-    this.valueGetal = $('#value-getal');
-    this.valueVul = $('#value-vul');
-    this.energieVul = $('#energie-vul');
-    this.energieBalk = document.querySelector('.energie-balk');
+    this.wielTeller = $('#wiel-teller');
     this.sectieNaam = $('#sectie-naam');
     this.sprintdoel = $('#sprintdoel');
     this.pluspjes = $('#value-pluspjes');
@@ -27,25 +31,27 @@ export class Hud {
       sprinkles: $('#teller-sprinkles'),
     };
 
-    const wielHouder = $('#wiel-mini');
+    this.wielHouder = $('#wiel-mini');
     this.wiel = maakWiel({ actief: PI.strategisch });
-    wielHouder.appendChild(this.wiel);
+    this.wielHouder.appendChild(this.wiel);
+    this.zetWiel(new Set([PI.strategisch]));
   }
 
   toon(zichtbaar) {
     this.wortel.hidden = !zichtbaar;
   }
 
-  zetValue(waarde) {
-    const pct = Math.min(waarde, WAARDE.plafond);
-    this.valueGetal.textContent = `${Math.round(pct)}%`;
-    this.valueVul.style.width = `${pct}%`;
+  /* ---------------- het Doelenwiel als voortgangsmeter ---------------- */
+
+  /** @param {Set<string>} gekoppeld ids van segmenten met een teamdoel eraan */
+  zetWiel(gekoppeld, netGekoppeld = null) {
+    verlichtWiel(this.wiel, gekoppeld);
+    this.wielTeller.textContent = `${gekoppeld.size}/${DOELENWIEL.length}`;
+    this.wielHouder.classList.toggle('vol', gekoppeld.size >= DOELENWIEL.length);
+    if (netGekoppeld) pulsSegment(this.wiel, netGekoppeld);
   }
 
-  zetEnergie(fractie) {
-    this.energieVul.style.width = `${Math.min(1, fractie) * 100}%`;
-    this.energieBalk.classList.toggle('vol', fractie >= 1);
-  }
+  /* ---------------- de rest ---------------- */
 
   zetTeller(naam, waarde) {
     const el = this.tellers[naam];
@@ -67,21 +73,13 @@ export class Hud {
     this.sprintdoel.classList.add('af');
   }
 
-  /** Gouden +Value die opstijgt, plus een pulsje op het Doelenwiel: elke
-   *  waardevolle actie loopt zichtbaar terug naar het strategische doel. */
+  /** Gouden +Value die opstijgt. Feedback dat déze actie ertoe deed. */
   plusValue(punten, label = '') {
     const el = document.createElement('div');
     el.className = 'pluspje';
     el.textContent = label ? `+${punten} ${label}` : `+${punten} Value`;
     this.pluspjes.appendChild(el);
     setTimeout(() => el.remove(), 1700);
-
-    const segment = this.wiel.querySelector('.actief');
-    if (segment) {
-      segment.classList.remove('actief');
-      void segment.getBoundingClientRect();
-      segment.classList.add('actief');
-    }
   }
 
   toonPrompt(tekst) {

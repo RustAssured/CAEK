@@ -1,7 +1,7 @@
 /* CAEK — de levelbouwer.
  *
  * Geen Blender-export maar een declaratieve bouwer: de secties in
- * game/secties.js schrijven hun wereld met deze API. Dat leest prettiger dan
+ * game/level/ schrijven hun wereld met deze API. Dat leest prettiger dan
  * named empties uit een GLB en je kunt een sectie verplaatsen door één getal
  * te wijzigen.
  *

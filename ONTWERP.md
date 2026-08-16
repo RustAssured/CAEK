@@ -3,8 +3,9 @@
 Werkdocument. Hier staat wat we gaan bouwen voordat het gebouwd is, zodat
 "die grap klopt niet" een zin kost in plaats van een middag.
 
-Wat er nu draait is v1: één level, zeven concepten achter elkaar. Dit document
-beschrijft v2, waarin het spel de vorm krijgt van een echt kwartaal.
+**v2 is gebouwd.** Wat hieronder staat is geen plan meer maar een beschrijving
+van wat er draait: negen secties, vier sprints, vier Cluster Reviews, het
+Doelenwiel als enige voortgangsmeter. Wat nog open staat, staat in §10.
 
 > Markeringen: **[JIJ]** = ik heb input van Woo Jung nodig ·
 > **[?]** = open vraag · **[UIT]** = staat achter een schakelaar in `config.js`
@@ -212,8 +213,9 @@ Zusje, sidekick, en het geweten. Ze levert commentaar, ze blokkeert het pad als
 je een Cluster Review wilt overslaan, en ze zegt de zinnen die anders belerend
 zouden worden.
 
-*Nog een placeholder-model uit primitieven. Volggedrag en gezichtsuitdrukkingen
-werken al; zodra de rigged GLB er is, is het een kwestie van inladen.*
+*Haar echte model draait. Ze stond een tijd onder de vloer omdat haar clips een
+roottranslatie meedragen die Caeks clips niet hebben; de loader meet de
+voethoogte nu uit de rustclip in plaats van uit de bindpose.*
 
 ### SuperCaek
 
@@ -240,10 +242,10 @@ Daarna wordt het stil. Eerst het lawaai, dan het afscheid. Nooit andersom.
 
 **SuperCupcaek** wacht nog even — plek blijft vrij.
 
-**Modellen:** SuperCaek is binnen en deelt het skelet van Caek (24 botten,
-identieke namen), dus hij leent idle, lopen en springen gewoon van Caek. Er
-hoeft niets extra's geanimeerd te worden. Cupcaeks GLB is bij het uploaden
-misgegaan — nu nog een placeholder uit primitieven.
+**Modellen:** alle drie draaien. SuperCaek deelt het skelet van Caek (24
+botten, identieke namen) en heeft een eigen mixer die dezelfde clip op dezelfde
+tijd afspeelt, dus hij leent idle, lopen en springen gewoon van Caek. Bij de
+transformatie wisselt het model, niet alleen de kleur.
 
 ### De teams
 
@@ -276,7 +278,9 @@ Staat inmiddels in `config.js`:
 
 In het publiek: **stakeholders, binnen en buiten UWV**.
 
-**[JIJ]** Nog aan te vullen: de aftitelingslijst.
+**[JIJ]** Nog aan te vullen: de aftitelingslijst. Staat als `AFTITELING` in
+`config.js` — een lijst van `{ kop, namen }`. Blijft hij leeg, dan valt het
+eindscherm terug op de teamlijst, dus er staat altijd iets.
 
 ### Woo Jung FM
 
@@ -321,8 +325,10 @@ opzij doet.
 
 **[JIJ] De woorden moeten van jou zijn.** Ik kan een mooie afscheidstekst
 schrijven en die zal nergens naar smaken. Schrijf jij hem, zo lang of kort als
-je wilt, geen vorm nodig — ik bouw het omhulsel. Laat ook even weten of je naam
-eronder mag of dat je liever anoniem afscheid neemt.
+je wilt, geen vorm nodig — het omhulsel staat er. Zet je regels in `AFSCHEID`
+in `config.js` (`regels` is een lijst alinea's, `ondertekening` je naam of
+leeg). Laat je het leeg, dan bestaat het blok niet en klopt het scherm nog
+steeds.
 
 Daarna de aftiteling met het hele cluster erin.
 

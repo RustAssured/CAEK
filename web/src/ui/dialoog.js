@@ -8,6 +8,8 @@ const SPREKERS = {
   verteller: { naam: '', avatar: '📋', klasse: 'verteller' },
   publiek: { naam: 'HET PUBLIEK', avatar: '👥', klasse: 'verteller' },
   scopecreep: { naam: 'SCOPE CREEP', avatar: '🥟', klasse: 'verteller' },
+  radio: { naam: 'WOO JUNG FM', avatar: '📻', klasse: 'verteller' },
+  teams: { naam: 'DE TEAMS', avatar: '🎂', klasse: 'verteller' },
 };
 
 export class Dialoog {

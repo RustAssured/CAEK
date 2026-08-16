@@ -116,37 +116,19 @@ kbd {
   background: linear-gradient(180deg, rgba(23, 48, 125, .93), rgba(11, 22, 64, .95));
   box-shadow: var(--schaduw);
 }
-.value-kop { display: flex; justify-content: space-between; align-items: baseline; font-family: var(--vet); }
-.value-kop span { letter-spacing: .12em; font-size: .85em; }
-.value-kop b { color: var(--goud-licht); font-size: 1.35em; }
+/* Het Doelenwiel is de enige voortgangsmeter. Geen energiebalk ernaast:
+   minder HUD is beter voor deze doelgroep, en één meter met één betekenis is
+   sterker dan twee. */
+.wiel-kop { display: flex; justify-content: space-between; align-items: baseline; font-family: var(--vet); }
+.wiel-kop span { letter-spacing: .12em; font-size: .85em; }
+.wiel-kop b { color: var(--goud-licht); font-size: 1.35em; }
 
-.value-balk, .energie-balk {
-  position: relative;
-  height: 14px;
-  margin-top: .35em;
-  border: 2px solid var(--blauw-diep);
-  border-radius: 999px;
-  background: rgba(0, 0, 0, .4);
-  overflow: hidden;
-}
-.value-balk i {
-  display: block; height: 100%; width: 0;
-  background: repeating-linear-gradient(115deg, var(--goud) 0 8px, var(--goud-licht) 8px 15px);
-  transition: width .45s cubic-bezier(.2, .9, .25, 1);
-}
-.energie-balk { height: 8px; }
-.energie-balk i {
-  display: block; height: 100%; width: 0;
-  background: linear-gradient(90deg, var(--blauw-licht), #8fd3ff);
-  transition: width .3s ease-out;
-}
-.energie-balk.vol { animation: gloed 1s infinite alternate; }
-@keyframes gloed { to { box-shadow: 0 0 14px 3px #8fd3ff; } }
-
-.doelenwiel-mini { position: absolute; left: -62px; top: 4px; width: 56px; height: 56px; }
+.doelenwiel-mini { width: 88px; height: 88px; margin: .35em auto 0; }
 .doelenwiel-mini svg { width: 100%; height: 100%; filter: drop-shadow(0 3px 0 rgba(11,22,64,.6)); }
 .doelenwiel-mini .actief { animation: wielpuls 1.1s; }
+.doelenwiel-mini.vol { animation: gloed 1s infinite alternate; border-radius: 50%; }
 @keyframes wielpuls { 0%,100% { filter: none; } 40% { filter: brightness(2.2); } }
+@keyframes gloed { to { box-shadow: 0 0 18px 5px rgba(255, 216, 115, .75); } }
 
 .sectiekaart {
   max-width: clamp(180px, 22vw, 300px);
@@ -480,10 +462,54 @@ kbd {
 .eind-rij ul { margin: 0; padding-left: 1.1em; }
 .eind-rij li { line-height: 1.5; }
 
-.eind-meter { display: flex; align-items: center; gap: .6em; }
-.eind-meter .balk { flex: 1; height: 18px; border: 3px solid var(--blauw-diep); border-radius: 999px; background: rgba(0,0,0,.45); overflow: hidden; }
-.eind-meter .balk i { display: block; height: 100%; width: 0; background: repeating-linear-gradient(115deg, var(--goud) 0 9px, var(--goud-licht) 9px 17px); transition: width 1.4s cubic-bezier(.2,.9,.25,1); }
-.eind-meter b { font-family: var(--vet); color: var(--goud-licht); min-width: 3.2em; text-align: right; }
+/* Beloofd naast geleverd: twee balken onder elkaar, want dat is precies wat
+   je bij Inspect & Adapt op tafel legt. */
+.eind-vergelijk { display: grid; gap: .35em; }
+.vgl-regel { display: flex; align-items: center; gap: .6em; }
+.vgl-regel > span:first-child {
+  min-width: 5.2em; font-size: .82em; letter-spacing: .06em;
+  text-transform: uppercase; opacity: .8;
+}
+.vgl-regel .balk {
+  flex: 1; height: 18px; border: 3px solid var(--blauw-diep);
+  border-radius: 999px; background: rgba(0, 0, 0, .45); overflow: hidden;
+}
+.vgl-regel .balk i { display: block; height: 100%; width: 0; transition: width 1.4s cubic-bezier(.2, .9, .25, 1); }
+.vgl-regel .beloofd i { background: repeating-linear-gradient(115deg, #2f4fa8 0 9px, var(--blauw-licht) 9px 17px); }
+.vgl-regel .geleverd i { background: repeating-linear-gradient(115deg, var(--goud) 0 9px, var(--goud-licht) 9px 17px); }
+.vgl-regel b { font-family: var(--vet); color: var(--goud-licht); min-width: 2.6em; text-align: right; }
+
+/* Het afscheidswoord. Het frame blijft heel: geen zwart scherm met tekst,
+   maar een blok dat rustiger is dan de rest van de pagina. */
+.eind-afscheid {
+  margin: 1.6em 0 0;
+  padding: 1.2em clamp(1em, 3vw, 2.2em);
+  border: var(--rand);
+  border-radius: 16px;
+  background: rgba(11, 22, 64, .55);
+  font-size: clamp(14px, 1.6vw, 19px);
+  line-height: 1.7;
+}
+.eind-afscheid p { margin: 0 0 .8em; }
+.eind-afscheid p:last-of-type { margin-bottom: 0; }
+.afscheid-onder {
+  margin-top: 1.1em; text-align: right;
+  font-family: var(--vet); color: var(--goud-licht);
+}
+
+/* De aftiteling: hier mag het lang zijn. */
+.eind-aftiteling { margin: 1.4em 0 0; text-align: center; }
+.eind-aftiteling h3 {
+  margin: 0 0 .8em; font-family: var(--vet);
+  letter-spacing: .14em; font-size: clamp(13px, 1.6vw, 18px);
+  color: var(--goud-licht);
+}
+.aftiteling-blok { margin: 0 0 .9em; }
+.aftiteling-blok h4 {
+  margin: 0 0 .2em; font-family: var(--vet);
+  letter-spacing: .08em; font-size: .85em; opacity: .75; font-weight: normal;
+}
+.aftiteling-blok p { margin: 0; line-height: 1.7; font-size: clamp(13px, 1.5vw, 17px); }
 
 .eind-slot { margin-top: .9em; text-align: center; }
 .eind-slot .kreet {

@@ -94,3 +94,26 @@ export function maakWiel({ actief, labels = false, gloed = 1 } = {}) {
 export function doelVan(id) {
   return DOELENWIEL.find((d) => d.id === id);
 }
+
+/**
+ * Zet de segmenten aan die aan een teamdoel gekoppeld zijn.
+ *
+ * Dit is de enige voortgangsmeter van het spel: vier sprints lang zie je het
+ * wiel voller worden, en vol wiel betekent SuperCaek.
+ */
+export function verlichtWiel(svg, gekoppeld) {
+  for (const pad of svg.querySelectorAll('path[data-doel]')) {
+    const aan = gekoppeld.has(pad.dataset.doel);
+    pad.setAttribute('opacity', aan ? '1' : '0.26');
+    pad.classList.toggle('aan', aan);
+  }
+}
+
+/** Laat één segment kort oppulsen. */
+export function pulsSegment(svg, id) {
+  const pad = svg.querySelector(`path[data-doel="${id}"]`);
+  if (!pad) return;
+  pad.classList.remove('actief');
+  void pad.getBoundingClientRect();
+  pad.classList.add('actief');
+}

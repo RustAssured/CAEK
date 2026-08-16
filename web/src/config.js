@@ -1,4 +1,10 @@
-/* CAEK — alle draaiknoppen op één plek. */
+/* CAEK — alle draaiknoppen op één plek.
+ *
+ * Wat je hier verandert, verandert het spel zonder dat er code aan te pas
+ * komt. Dat geldt vooral voor TEAMS, PUBLIEK en AFTITELING: die lijsten zijn
+ * bedoeld om tot vijf minuten voor verzending nog bij te werken. Het spel
+ * werkt met vier teams net zo goed als met twintig -- nergens staat een
+ * aantal hardcoded. */
 
 export const NATUURKUNDE = {
   zwaartekracht: -58,
@@ -26,35 +32,29 @@ export const CAMERA = {
 };
 
 export const SUPERCAEK = {
-  duur: 20,                // seconden in comicmodus
+  duur: 20,                // seconden in comicmodus bij Inspect & Adapt
   transformatie: 2.6,      // lengte van het anime-pauzemoment
   snelheidsbonus: 1.7,
-  energiePerValue: 1 / 68, // vol rond de demo, ook als je alles optioneels overslaat
 };
 
-/* De Value-beloningen uit het design doc. Waarde komt van bijdragen aan het
- * PI-doel, niet van hard rennen. Alles bij elkaar komt boven de 97, want de
- * meter capt: 100% bestaat niet. */
-export const WAARDE = {
-  sprintdoel: 10,
-  metrics: 15,
-  afhankelijkheid: 10,
-  feedback: 10,
-  demo: 15,
-  clusterReview: 10,
-  impediment: 5,
-  technicalDebt: 5,
-  besluit: 5,
-  piDoel: 30,
-  plafond: 97,
+/* Schakelaars voor grappen die misschien niet blijken te werken. Uit zetten
+ * kost één regel; iets uit de code halen kost een middag. */
+export const SCHAKELS = {
+  wachttunnel: true,       // sprint 4: de deur die op zichzelf opengaat
+  cadans: true,            // teams die net iets uit de maat draaien
+  wooJungFM: true,         // het gedeukte radiootje bij de review
 };
 
-/* Het Doelenwiel — de acht echte doelen van UWV, met de klok mee vanaf boven.
+/* ------------------------------------------------------------------ *
+ * Het Doelenwiel — de ruggengraat
+ * ------------------------------------------------------------------ */
+
+/* De acht echte doelen van UWV, met de klok mee vanaf boven.
  *
- * Dit is de ruggengraat van het spel: alles wat je doet is aan een segment
- * gekoppeld, en het wiel loopt gedurende de vier sprints vol. In het naafje
- * staat alleen DOELEN UWV; "Wet- en regelgeving" is al een segment, dus in het
- * midden zou het dubbel staan.
+ * Alles wat je doet is aan een segment gekoppeld, en het wiel loopt
+ * gedurende de vier sprints vol. In het naafje staat alleen DOELEN UWV;
+ * "Wet- en regelgeving" is al een segment, dus in het midden zou het
+ * dubbel staan.
  *
  * `kort` is wat er in het segment past, `naam` is de volledige formulering. */
 export const DOELENWIEL = [
@@ -68,24 +68,78 @@ export const DOELENWIEL = [
   { id: 'beslissingen', kort: ['Beslissingen tijdig,', 'juist, begrijpelijk'], naam: 'Beslissingen tijdig, juist en begrijpelijk', kleur: '#f0932b', icoon: '🕐' },
 ];
 
-/* De teams van het cluster. Dit is de enige lijst die je nakijkt voordat je
- * het spel verstuurt — het spel werkt met vier teams net zo goed als met
- * twintig, het podium van de Cluster Review schaalt mee. Wie hier niet in
- * staat, hoort in de aftiteling (zie AFTITELING). */
-export const TEAMS = {
-  applicatie: [
-    'Polis LA', 'Superheroes', 'Sterke Verhalen', 'Casio', 'Equinox',
-    'KMT IO', 'Smurfen', 'Muppets', 'UGCEMP', 'AVBDVB',
-    'UPA', 'KBS', 'Luziver', 'BPMONE', 'Tiem',
-  ],
-  enabler: ['TET', 'Architectuur'],
-};
-
 export const PI = {
   // welk segment van het wiel deze PI vooral dient
   strategisch: 'dienstverlening',
   doel: 'Afnemers en ketenpartners krijgen in één keer het juiste antwoord.',
+  // wat de teams op de PI planning aan business value beloofden; bij Inspect
+  // & Adapt komt de werkelijkheid ernaast te staan
+  beloofdeValue: 340,
 };
+
+/* ------------------------------------------------------------------ *
+ * De teams
+ * ------------------------------------------------------------------ */
+
+/* Dit is de enige lijst die je nakijkt voordat je het spel verstuurt. Wie
+ * hier niet in staat maar wel bij het cluster hoort, hoort in AFTITELING.
+ *
+ * `cadans: false` betekent: draait nog niet mee in hetzelfde ritme. Dat is
+ * puur visueel -- hun oventimer staat anders, hun taart komt een tel later
+ * uit de oven. De speler hoeft er niets mee te doen. */
+export const TEAMS = [
+  { naam: 'Polis LA', soort: 'applicatie' },
+  { naam: 'Superheroes', soort: 'applicatie' },
+  { naam: 'Sterke Verhalen', soort: 'applicatie' },
+  { naam: 'Casio', soort: 'applicatie' },
+  { naam: 'Equinox', soort: 'applicatie' },
+  { naam: 'KMT IO', soort: 'applicatie' },
+  { naam: 'Smurfen', soort: 'applicatie' },
+  { naam: 'Muppets', soort: 'applicatie' },
+  { naam: 'UGCEMP', soort: 'applicatie' },
+  { naam: 'AVBDVB', soort: 'applicatie' },
+  { naam: 'UPA', soort: 'applicatie', cadans: false },
+  { naam: 'KBS', soort: 'applicatie' },
+  { naam: 'Luziver', soort: 'applicatie', cadans: false },
+  { naam: 'BPMONE', soort: 'applicatie' },
+  { naam: 'Tiem', soort: 'applicatie' },
+  { naam: 'TET', soort: 'enabler' },
+  { naam: 'Architectuur', soort: 'enabler' },
+];
+
+/* In het publiek bij elke Cluster Review. Dat de stakeholders ín het cluster
+ * zitten is waar dit cluster trots op is, dus die horen in beeld en niet
+ * achter een muur waar je naartoe demonstreert. */
+export const PUBLIEK = 'Stakeholders, binnen en buiten UWV';
+
+/**
+ * Welk teamdoel aan welk wielsegment hangt, en bij welke review dat zichtbaar
+ * wordt.
+ *
+ * Afgeleid uit de teamlijst in plaats van met de hand ingevuld: zo blijft het
+ * kloppen als de roster verandert, en zo staat er nergens de bewering "team X
+ * werkt aan doel Y" -- het zijn gouden lijnen, geen toewijzingen.
+ *
+ * De verdeling loopt op: bij review 1 hangt een deel eraan, bij Inspect &
+ * Adapt alles. Dat is de beweging die er echt is.
+ */
+export function koppelingen(teams = TEAMS, wiel = DOELENWIEL) {
+  const n = teams.length;
+  return teams.map((team, i) => ({
+    team: team.naam,
+    // evenredig over de segmenten: opeenvolgende teams komen op hetzelfde
+    // segment uit, zodat het wiel per review met twee segmenten volloopt in
+    // plaats van meteen helemaal. De lijnen bundelen dan ook mooi.
+    doel: wiel[Math.min(wiel.length - 1, Math.floor((i * wiel.length) / n))].id,
+    // gelijkmatig over de vier momenten, zodat er bij review 1 al lijnen
+    // hangen en bij Inspect & Adapt alles eraan hangt
+    review: Math.min(4, Math.floor((i * 4) / n) + 1),
+  }));
+}
+
+/* ------------------------------------------------------------------ *
+ * De vier sprints
+ * ------------------------------------------------------------------ */
 
 /* Sprint 1. Vijf ingrediënten dragen bij aan het sprintdoel, de rest is
  * precies het soort werk waar Scope Creep dik van wordt. */
@@ -101,18 +155,30 @@ export const INGREDIENTEN = [
   { id: 'migratie', emoji: '🥐', naam: 'alvast een migratie voor volgend jaar', nodig: false },
 ];
 
+/* Sprint 2: de afhankelijkheden. Drie schakelaars horen bij teams, niet bij
+ * abstracties -- dezelfde puzzel, maar het gaat ineens ergens over. Welke
+ * teams dat zijn wordt bij het bouwen uit TEAMS gehaald. */
+export const AFHANKELIJKHEDEN = [
+  { id: 'business', rol: 'BUSINESS' },
+  { id: 'iv', rol: 'IV' },
+  { id: 'keten', rol: 'KETENPARTNER' },
+];
+
+/* Sprint 3: meten. */
 export const METRICS = [
   { id: 'doorlooptijd', emoji: '⏱️', naam: 'Doorlooptijd', meting: 'te hoog — 14 dagen tot antwoord' },
   { id: 'gebruik', emoji: '📉', naam: 'Gebruik', meting: 'lager dan gedacht — 1 op de 5 afnemers' },
   { id: 'feedback', emoji: '🧭', naam: 'Gebruikersfeedback', meting: 'ketenpartners lopen vast bij stap 3' },
 ];
 
-export const SCHAKELAARS = [
-  { id: 'business', naam: 'BUSINESS' },
-  { id: 'iv', naam: 'IV' },
-  { id: 'keten', naam: 'KETENPARTNER' },
+/* Sprint 3: de bus van links. Theoretisch laat je iets vallen. */
+export const SPOEDWERK = [
+  { id: 'wetswijziging', naam: 'Een wetswijziging met een datum erop', icoon: '⚖️' },
+  { id: 'productie', naam: 'Iets dat in productie stuk is', icoon: '🔥' },
+  { id: 'vraag', naam: 'Een vraag van buiten die niet kan wachten', icoon: '📮' },
 ];
 
+/* Cluster Review: feedback als gekleurde hagelslag. */
 export const SPRINKLES = [
   { id: 'kleur', kleur: '#e8721f', tekst: '"De kleur van de knop is niet onze huisstijl."', relevant: false },
   { id: 'stap3', kleur: '#63a844', tekst: '"Bij stap 3 weten we niet meer wat we moeten invullen."', relevant: true },
@@ -121,15 +187,81 @@ export const SPRINKLES = [
   { id: 'ai', kleur: '#7a4fb5', tekst: '"Kan er ook AI in?"', relevant: false },
 ];
 
-/* Sectiegrenzen op de X-as. De wereld is één rechte lijn van 0 tot ~356. */
-export const SECTIES = [
-  { id: 'start', x: 0, naam: 'START PI', titel: 'DE PI PLANNING OVEN', onder: 'de oven warmt op' },
-  { id: 'sprint', x: 46, naam: 'SPRINT 1', titel: 'SPRINT 1 — MAAK HET BESLAG', onder: 'niet alles wat je kunt pakken hoort erbij' },
-  { id: 'metrics', x: 122, naam: 'METRIEKEN', titel: 'HET METRIEKENLABORATORIUM', onder: 'hoe gaat het eigenlijk?' },
-  { id: 'pretzel', x: 178, naam: 'AFHANKELIJKHEDEN', titel: 'DE DEPENDENCY PRETZEL', onder: 'trek aan één kabel, drie bewegen mee' },
-  { id: 'review', x: 232, naam: 'CLUSTER REVIEW', titel: 'CLUSTER REVIEW', onder: 'volgende voorstelling: NU' },
-  { id: 'demo', x: 288, naam: 'DE DEMO', titel: 'DE DEMO', onder: 'twee knoppen, één goed antwoord' },
-  { id: 'oven', x: 326, naam: 'EINDE PI', titel: 'DE VALUE OVEN', onder: 'wat komt eruit?' },
+/* Wat het radiootje zegt als je erop drukt. Aanwezig zonder spotlight. */
+export const WOO_JUNG_FM = [
+  'En dan nu: een korte terugblik op de vorige terugblik.',
+  'Voor wie net binnenkomt: we zijn al begonnen.',
+  'Ik hoor dat de zaal vol is. Dat is het mooiste geluid dat er is.',
+  'Even een reminder: de demo duurt vijf minuten. Vijf.',
+  'Applaus voor het team dat wél op tijd is aangesloten.',
+  'Muziekje? Nee? Goed. Door.',
 ];
 
-export const WERELD_EINDE = 358;
+/* ------------------------------------------------------------------ *
+ * Waarde: beloofd versus geleverd
+ * ------------------------------------------------------------------ */
+
+/* Waarde komt alleen van acties die aan een PI-doel bijdragen. Rondrennen en
+ * spullen verzamelen levert niets op -- dat is het punt. De meter capt op 97:
+ * er is altijd wel iets te verbeteren. */
+export const WAARDE = {
+  sprintdoel: 10,
+  afhankelijkheid: 10,
+  metrics: 12,
+  spoedwerk: 6,
+  demo: 14,
+  feedback: 8,
+  review: 6,           // per bijgewoonde Cluster Review
+  impediment: 5,
+  technicalDebt: 5,
+  besluit: 4,
+  piDoel: 24,
+  plafond: 97,
+};
+
+/* ------------------------------------------------------------------ *
+ * De wereld: negen secties op één rechte lijn
+ * ------------------------------------------------------------------ */
+
+/* Sprint 1 is de langste -- daar leer je de bewegingen. Sprint 2 tot 4 zijn
+ * korter omdat je ze al kent. De reviews zijn allemaal even lang: dat is de
+ * cadans, en die hoor je te herkennen. */
+export const SECTIES = [
+  { id: 'planning', x: 0, lengte: 56, naam: 'PI PLANNING', titel: 'DE PI PLANNING', onder: 'wat gaan we deze PI waarmaken?' },
+  { id: 'sprint1', x: 56, lengte: 78, naam: 'SPRINT 1', titel: 'SPRINT 1 — HET BESLAG', onder: 'niet alles wat je kunt pakken hoort erbij', doel: 'Maak de eerste werkende basis' },
+  { id: 'review1', x: 134, lengte: 48, naam: 'CLUSTER REVIEW 1', titel: 'CLUSTER REVIEW', onder: 'de zaal is vol' },
+  { id: 'sprint2', x: 182, lengte: 58, naam: 'SPRINT 2', titel: 'SPRINT 2 — DE KNOOP', onder: 'trek aan één kabel, drie bewegen mee', doel: 'Krijg de keten aan de praat' },
+  { id: 'review2', x: 240, lengte: 48, naam: 'CLUSTER REVIEW 2', titel: 'CLUSTER REVIEW', onder: 'nu met meer lijnen naar het wiel' },
+  { id: 'sprint3', x: 288, lengte: 68, naam: 'SPRINT 3', titel: 'SPRINT 3 — METEN EN DE BUS', onder: 'hoe gaat het eigenlijk?', doel: 'Meet het, en doe er iets mee' },
+  { id: 'review3', x: 356, lengte: 48, naam: 'CLUSTER REVIEW 3', titel: 'CLUSTER REVIEW', onder: 'het wiel is over de helft' },
+  { id: 'sprint4', x: 404, lengte: 62, naam: 'SPRINT 4', titel: 'SPRINT 4 — LATEN ZIEN', onder: 'PowerPoint of gewoon laten zien', doel: 'Laat zien wat er werkt' },
+  { id: 'inspect', x: 466, lengte: 64, naam: 'INSPECT & ADAPT', titel: 'INSPECT & ADAPT', onder: 'beloofd naast geleverd' },
+];
+
+export const WERELD_EINDE = 534;
+
+/* Welke review bij welke sectie hoort. De Cluster Review is één bouwer die
+ * vier keer draait; dit is het enige verschil tussen de keren. */
+export const REVIEWS = [
+  { nummer: 1, sectie: 'review1' },
+  { nummer: 2, sectie: 'review2' },
+  { nummer: 3, sectie: 'review3' },
+  { nummer: 4, sectie: 'inspect' },
+];
+
+/* ------------------------------------------------------------------ *
+ * Het einde
+ * ------------------------------------------------------------------ */
+
+/* Het afscheidswoord. Laat AFSCHEID leeg en het eindscherm slaat dat blok
+ * netjes over -- dan blijft de aftiteling staan en klopt het alsnog. */
+export const AFSCHEID = {
+  regels: [],
+  ondertekening: '',
+};
+
+/* De aftiteling: DIT CLUSTER BESTOND UIT. Hier mag het lang zijn, hier
+ * verwacht iedereen volledigheid. Kopjes met namen eronder. */
+export const AFTITELING = [];
+
+export const SLOGAN = 'BETERE INGREDIËNTEN, BETER RESULTAAT!';

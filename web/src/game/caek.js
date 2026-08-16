@@ -169,6 +169,47 @@ export class Caek {
     this.#maakCape();
   }
 
+  /**
+   * Hangt het echte SuperCaek-model erbij, verborgen tot de transformatie.
+   *
+   * Hij deelt Caeks skelet (24 botten, identieke namen) maar heeft zijn eigen
+   * skeletoninstantie, dus hij krijgt een eigen mixer die dezelfde clip op
+   * dezelfde tijd afspeelt. Zijn eigen renclip gaat voor; de rest leent hij
+   * van Caek.
+   */
+  zetSuperModel(superModel) {
+    if (!superModel) return;
+    this.superModel = superModel;
+    superModel.wortel.visible = false;
+    this.draaier.add(superModel.wortel);
+
+    this.superMixer = new THREE.AnimationMixer(superModel.wortel);
+    this.superActies = {};
+    // eerst wat hij zelf heeft, dan de rest van Caek erbij
+    for (const [naam, clip] of Object.entries({ ...this.model.clips, ...superModel.clips })) {
+      this.superActies[naam] = this.superMixer.clipAction(clip);
+    }
+    if (this.superActies.springen) {
+      this.superActies.springen.loop = THREE.LoopOnce;
+      this.superActies.springen.clampWhenFinished = true;
+    }
+    this.superHuidige = null;
+  }
+
+  /** Laat het supermodel exact meelopen met de clip die Caek nu draait. */
+  #synchroniseerSuper(dt) {
+    if (!this.superMixer || !this.superModel.wortel.visible) return;
+    const naam = Object.keys(this.acties).find((k) => this.acties[k] === this.huidigeActie);
+    const doel = this.superActies[naam];
+    if (doel && this.superHuidige !== doel) {
+      doel.reset().setEffectiveWeight(1).play();
+      if (this.superHuidige) this.superHuidige.stop();
+      this.superHuidige = doel;
+    }
+    if (this.superHuidige && this.huidigeActie) this.superHuidige.time = this.huidigeActie.time;
+    this.superMixer.update(dt);
+  }
+
   #maakCape() {
     const geo = new THREE.PlaneGeometry(1.5, 1.9, 6, 8);
     const mat = new THREE.MeshLambertMaterial({
@@ -228,18 +269,31 @@ export class Caek {
     this.opGrond = false;
   }
 
-  startSuper() {
+  /** @param {number} [duur] seconden; standaard de volle SUPERCAEK.duur */
+  startSuper(duur = SUPERCAEK.duur) {
     this.superActief = true;
-    this.superTijd = SUPERCAEK.duur;
+    this.superTijd = duur;
     this.cape.visible = true;
-    for (const [mesh, mat] of this.superMaterialen) mesh.material = mat;
+    if (this.superModel) {
+      // het echte model: Caek gaat uit, SuperCaek gaat aan
+      this.model.wortel.visible = false;
+      this.superModel.wortel.visible = true;
+      this.superHuidige = null;
+    } else {
+      for (const [mesh, mat] of this.superMaterialen) mesh.material = mat;
+    }
   }
 
   stopSuper() {
     this.superActief = false;
     this.superTijd = 0;
     this.cape.visible = false;
-    for (const [mesh, mat] of this.origineleMaterialen) mesh.material = mat;
+    if (this.superModel) {
+      this.model.wortel.visible = true;
+      this.superModel.wortel.visible = false;
+    } else {
+      for (const [mesh, mat] of this.origineleMaterialen) mesh.material = mat;
+    }
   }
 
   update(dt, invoer) {
@@ -301,6 +355,7 @@ export class Caek {
     }
 
     this.mixer.update(dt);
+    this.#synchroniseerSuper(dt);
     this.groep.position.copy(this.positie);
   }
 

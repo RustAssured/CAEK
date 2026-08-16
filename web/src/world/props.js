@@ -493,6 +493,227 @@ export function deur(regels, breedte = 3, hoogte = 4.6) {
 }
 
 /* ------------------------------------------------------------------ *
+ * De Cluster Review
+ * ------------------------------------------------------------------ */
+
+/**
+ * Een teamstand: kleine demotafel met een naambordje en een eigen oventje.
+ *
+ * Kleiner dan demotafel() omdat er zeventien naast elkaar staan. Enablerteams
+ * krijgen geen taart maar een sleutel op tafel: zij maken mogelijk dat de rest
+ * kan bakken, en dat is een ander soort resultaat.
+ */
+export function teamstand(naam, { kleur = PALET.goud, enabler = false } = {}) {
+  const groep = new THREE.Group();
+
+  const blad = doos(2.4, 0.22, 1.6, PALET.korst);
+  blad.position.y = 1.0;
+  groep.add(blad);
+  for (const x of [-0.95, 0.95]) for (const z of [-0.6, 0.6]) {
+    const poot = doos(0.16, 1.0, 0.16, PALET.korst);
+    poot.position.set(x, 0.5, z);
+    groep.add(poot);
+  }
+
+  const resultaat = new THREE.Group();
+  if (enabler) {
+    const steel = doos(0.16, 0.9, 0.16, PALET.blauwLicht, { emissief: 0.5 });
+    steel.position.y = 0.45;
+    resultaat.add(steel);
+    const baard = doos(0.5, 0.16, 0.16, PALET.blauwLicht, { emissief: 0.5 });
+    baard.position.set(0.17, 0.12, 0);
+    resultaat.add(baard);
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(0.26, 0.08, 6, 16), verf(PALET.blauwLicht, { emissief: 0.5 }));
+    ring.position.y = 1.0;
+    resultaat.add(ring);
+  } else {
+    const bodem = cilinder(0.6, 0.5, kleur, { emissief: 0.35 });
+    bodem.position.y = 0.25;
+    resultaat.add(bodem);
+    const glazuur = cilinder(0.64, 0.16, PALET.room, { emissief: 0.5 });
+    glazuur.position.y = 0.58;
+    resultaat.add(glazuur);
+    const kers = bol(0.12, PALET.rood, { emissief: 0.6 });
+    kers.position.y = 0.74;
+    resultaat.add(kers);
+  }
+  resultaat.position.y = 1.12;
+  groep.add(resultaat);
+  groep.userData.resultaat = resultaat;
+
+  const bordje = label(naam, { breedte: 2.5, grootte: 52, plaat: true });
+  bordje.position.set(0, 2.5, 0.2);
+  groep.add(bordje);
+  groep.userData.bordje = bordje;
+
+  // het oventje waar hun cadans aan af te lezen is
+  const oventje = doos(0.9, 0.9, 0.7, PALET.blauw, { plat: true });
+  oventje.position.set(-1.5, 0.45, 0);
+  groep.add(oventje);
+  const lampje = bol(0.16, PALET.oranje, { emissief: 1.4 });
+  lampje.position.set(-1.5, 0.95, 0.4);
+  groep.add(lampje);
+  groep.userData.lampje = lampje;
+
+  return groep;
+}
+
+/**
+ * Woo Jung FM: een klein gedeukt radiootje op een paaltje.
+ *
+ * Geen figuurtje. Aanwezig zonder spotlight -- wie het weet die weet het.
+ */
+export function radio() {
+  const groep = new THREE.Group();
+
+  const paal = cilinder(0.1, 1.1, PALET.steen);
+  paal.position.y = 0.55;
+  groep.add(paal);
+
+  const kast = doos(1.5, 0.9, 0.7, PALET.korst, { plat: true });
+  kast.position.y = 1.55;
+  kast.rotation.z = 0.06;          // scheef, want gedeukt
+  groep.add(kast);
+
+  const rooster = doos(0.62, 0.62, 0.1, PALET.blauwDiep);
+  rooster.position.set(-0.36, 1.55, 0.38);
+  rooster.rotation.z = 0.06;
+  groep.add(rooster);
+
+  const schaal = doos(0.6, 0.24, 0.1, PALET.room, { emissief: 0.8 });
+  schaal.position.set(0.3, 1.72, 0.38);
+  groep.add(schaal);
+
+  for (const x of [0.16, 0.46]) {
+    const knop = cilinder(0.11, 0.12, PALET.goud, { emissief: 0.5 });
+    knop.rotation.x = Math.PI / 2;
+    knop.position.set(x, 1.38, 0.38);
+    groep.add(knop);
+  }
+
+  const antenne = cilinder(0.035, 1.5, PALET.goud, { emissief: 0.4 });
+  antenne.position.set(0.6, 2.4, 0);
+  antenne.rotation.z = -0.4;
+  groep.add(antenne);
+
+  const bordje = label('WOO JUNG FM', { breedte: 3.0, grootte: 46, plaat: true });
+  bordje.position.set(0, 3.2, 0.2);
+  groep.add(bordje);
+
+  groep.userData.schaal = schaal;
+  return groep;
+}
+
+/** De Obeya-muur: kaartjes in kolommen. Decor, maar herkenbaar decor. */
+export function obeya(breedte = 9, hoogte = 4.4) {
+  const groep = new THREE.Group();
+
+  const wand = doos(breedte, hoogte, 0.4, PALET.blauwDiep, { plat: true });
+  wand.position.y = hoogte / 2;
+  groep.add(wand);
+
+  const kleuren = [PALET.goud, PALET.groen, PALET.roze, PALET.oranje, PALET.blauwLicht];
+  const kolommen = Math.max(3, Math.round(breedte / 2.2));
+  let n = 7;
+  const willekeur = () => (n = (n * 1103515245 + 12345) % 2147483648) / 2147483648;
+  for (let k = 0; k < kolommen; k++) {
+    const rijen = 2 + Math.floor(willekeur() * 3);
+    for (let r = 0; r < rijen; r++) {
+      const kaartje = doos(0.7, 0.5, 0.06, kleuren[Math.floor(willekeur() * kleuren.length)], { emissief: 0.35 });
+      kaartje.position.set(
+        -breedte / 2 + 1.1 + k * ((breedte - 2.2) / Math.max(1, kolommen - 1)),
+        hoogte - 1.0 - r * 0.75,
+        0.24,
+      );
+      kaartje.rotation.z = (willekeur() - 0.5) * 0.2;
+      groep.add(kaartje);
+    }
+  }
+
+  const kop = label('OBEYA', { breedte: 3.2, grootte: 56, plaat: true });
+  kop.position.set(0, hoogte - 0.3, 0.3);
+  groep.add(kop);
+  return groep;
+}
+
+/** De bus van links: spoedwerk arriveert per bus, met knipperlicht. */
+export function bus(lengte = 9) {
+  const groep = new THREE.Group();
+
+  const romp = doos(lengte, 3.2, 3, PALET.oranje, { plat: true, emissief: 0.3 });
+  romp.position.y = 2.2;
+  groep.add(romp);
+
+  const dak = doos(lengte * 0.98, 0.3, 3.1, PALET.room, { emissief: 0.4 });
+  dak.position.y = 3.9;
+  groep.add(dak);
+
+  for (let i = 0; i < 4; i++) {
+    const raam = doos(lengte * 0.16, 1.1, 0.2, PALET.blauwDiep, { emissief: 0.2 });
+    raam.position.set(-lengte * 0.34 + i * lengte * 0.22, 2.8, 1.55);
+    groep.add(raam);
+  }
+
+  for (const x of [-lengte * 0.32, lengte * 0.3]) {
+    const wiel = cilinder(0.75, 0.6, PALET.blauwDiep);
+    wiel.rotation.x = Math.PI / 2;
+    wiel.position.set(x, 0.75, 1.5);
+    groep.add(wiel);
+    const wiel2 = wiel.clone();
+    wiel2.position.z = -1.5;
+    groep.add(wiel2);
+  }
+
+  const knipper = bol(0.3, PALET.goudLicht, { emissief: 1.8 });
+  knipper.position.set(0, 4.2, 0);
+  groep.add(knipper);
+  groep.userData.knipper = knipper;
+
+  const rolbord = label('SPOED', { breedte: 3.4, grootte: 62, plaat: true });
+  rolbord.position.set(lengte * 0.36, 3.2, 1.6);
+  groep.add(rolbord);
+
+  return groep;
+}
+
+/**
+ * De wachttunnel: een gesloten deur, en ernaast een grote knop die niks doet.
+ *
+ * Geen namen, geen venijn -- alleen het gevoel dat iedereen kent.
+ */
+export function wachttunnel(lengte = 10, hoogte = 6) {
+  const groep = new THREE.Group();
+
+  for (const x of [-lengte / 2, lengte / 2]) {
+    const wang = doos(0.8, hoogte, 5, PALET.steen, { plat: true });
+    wang.position.set(x, hoogte / 2, -1);
+    groep.add(wang);
+  }
+  const bovenkant = doos(lengte + 0.8, 0.9, 5, PALET.steen, { plat: true });
+  bovenkant.position.set(0, hoogte + 0.45, -1);
+  groep.add(bovenkant);
+
+  const poort = doos(lengte - 0.6, hoogte - 0.4, 0.5, PALET.blauw, { plat: true, emissief: 0.12 });
+  poort.position.set(0, (hoogte - 0.4) / 2, 0.6);
+  groep.add(poort);
+  groep.userData.poort = poort;
+
+  for (let i = 1; i < 5; i++) {
+    const balk = doos(lengte - 1.0, 0.24, 0.2, PALET.goud, { emissief: 0.3 });
+    balk.position.set(0, i * (hoogte - 0.4) / 5, 0.9);
+    groep.add(balk);
+    poort.userData[`balk${i}`] = balk;
+    groep.userData[`balk${i}`] = balk;
+  }
+
+  const bordje = label('EVEN GEDULD', { breedte: lengte * 0.7, grootte: 52, plaat: true });
+  bordje.position.set(0, hoogte + 1.3, 0.6);
+  groep.add(bordje);
+
+  return groep;
+}
+
+/* ------------------------------------------------------------------ *
  * Decor
  * ------------------------------------------------------------------ */
 
