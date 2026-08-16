@@ -52,10 +52,18 @@ export function vlak(b, h, materiaal) {
 let vloerTextuur = null;
 export function zetVloerTextuur(textuur) { vloerTextuur = textuur; }
 
-/** Hoeveel wereldeenheden één herhaling van de vloerplaat beslaat. */
-const VLOER_TEGEL = 9.0;
-/** Waar in de plaat de voorrand van het loopvlak zit, van boven gemeten. */
-const VLOER_RAND = 0.68;
+/* Maatvoering van de vloerplaat.
+ *
+ * `TEGEL` is hoeveel wereldeenheden één herhaling beslaat. `RAND` is waar in
+ * de plaat de voorrand van het loopvlak zit, van boven gemeten -- alles boven
+ * die lijn is wegwijkende straat, alles eronder de zijkant van de stoep.
+ *
+ * `BOVEN_MAX` begrenst hoe hoog die wegwijkende straat in de wereld mag
+ * uitsteken, en dat is niet cosmetisch: alles wat achter de grond staat --
+ * de zeventien teamstands van de Cluster Review, het publiek, de Obeya --
+ * verdwijnt erachter als deze band te hoog wordt. Een halve eenheid is genoeg
+ * om te lezen als straat en laag genoeg om niets af te dekken. */
+const VLOER = { TEGEL: 9.0, RAND: 0.68, BOVEN_MAX: 0.55 };
 
 /**
  * Een looppad. Geeft de mesh terug; de collider maakt level.js zelf.
@@ -99,17 +107,29 @@ const ZWEVEND_DEEL = 0.56;
 function geschilderdPlatform(breedte, zwevend = false) {
   const groep = new THREE.Group();
 
-  const deel = zwevend ? ZWEVEND_DEEL : 1;
-  const hoogte = (VLOER_TEGEL / 2) * deel;
-  const rand = zwevend ? (VLOER_RAND - (1 - deel)) / deel : VLOER_RAND;
+  let deel = zwevend ? ZWEVEND_DEEL : 1;
+  let hoogte = (VLOER.TEGEL / 2) * deel;
+  let rand = zwevend ? (VLOER.RAND - (1 - deel)) / deel : VLOER.RAND;
+
+  // De band boven de grondlijn aftoppen, anders verdwijnt de halve wereld
+  // erachter. Wat er van de plaat afvalt is de bovenkant, dus de uitsnede
+  // schuift mee naar beneden.
+  const boven = hoogte * rand;
+  if (boven > VLOER.BOVEN_MAX) {
+    const weg = (boven - VLOER.BOVEN_MAX) / (VLOER.TEGEL / 2);
+    deel -= weg;
+    hoogte = (VLOER.TEGEL / 2) * deel;
+    rand = VLOER.BOVEN_MAX / hoogte;
+  }
 
   const textuur = vloerTextuur.clone();
   textuur.needsUpdate = true;
   textuur.wrapS = THREE.RepeatWrapping;
   textuur.wrapT = THREE.ClampToEdgeWrapping;
-  textuur.repeat.set(breedte / VLOER_TEGEL, deel);
-  // elk platform een eigen stukje straat, anders herhaalt het zichtbaar
-  textuur.offset.set((breedte * 0.37) % 1, 0);
+  textuur.repeat.set(breedte / VLOER.TEGEL, deel);
+  // elk platform een eigen stukje straat, anders herhaalt het zichtbaar;
+  // verticaal snijden we de bovenkant eraf, dus offset.y volgt uit `deel`
+  textuur.offset.set((breedte * 0.37) % 1, 1 - deel);
 
   const materiaal = new THREE.MeshBasicMaterial({ map: textuur, toneMapped: false });
   // Ook deze plaat is al olieverf; er nog een laag Kuwahara overheen leggen
