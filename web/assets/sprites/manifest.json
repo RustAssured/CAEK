@@ -29,7 +29,7 @@
     "lopen": {
       "bestand": "cupcaek_lopen_8.webp",
       "frames": 8,
-      "breedte": 207,
+      "breedte": 190,
       "hoogte": 288
     },
     "idle": {
@@ -53,9 +53,9 @@
   },
   "supercaek": {
     "lopen": {
-      "bestand": "supercaek_lopen_8.webp",
-      "frames": 8,
-      "breedte": 230,
+      "bestand": "supercaek_lopen_6.webp",
+      "frames": 6,
+      "breedte": 234,
       "hoogte": 288
     },
     "idle": {
