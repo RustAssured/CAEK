@@ -3,5 +3,25 @@
     "bestand": "vloer.webp",
     "breedte": 1597,
     "hoogte": 887
+  },
+  "springblok": {
+    "bestand": "springblok.webp",
+    "breedte": 1154,
+    "hoogte": 1254
+  },
+  "blok": {
+    "bestand": "blok.webp",
+    "breedte": 1129,
+    "hoogte": 1254
+  },
+  "teamstand": {
+    "bestand": "teamstand.webp",
+    "breedte": 1254,
+    "hoogte": 1254
+  },
+  "publiek": {
+    "bestand": "publiek.webp",
+    "breedte": 1633,
+    "hoogte": 887
   }
 }

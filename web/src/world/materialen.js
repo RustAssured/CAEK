@@ -27,6 +27,16 @@ export const PALET = {
 
 const cache = new Map();
 
+/* De geschilderde blokplaat: één grijze detailkaart die over élk materiaal
+ * gelegd wordt. Grijs en rond 0.88, dus hij vermenigvuldigt met de kleur in
+ * plaats van hem te vervangen -- het blok houdt zijn goud of groen en krijgt
+ * er penseelwerk bij. Eén plaat, honderden dozen.
+ *
+ * Wordt vóór het bouwen gezet (zie world/vloer.js). Is hij er niet, dan zijn
+ * de materialen gewoon egaal, precies zoals eerst. */
+let blokKaart = null;
+export function zetBlokKaart(textuur) { blokKaart = textuur; }
+
 /** Mat, vlak materiaal — het beeld moet van vorm en kleur komen, niet van glans. */
 export function verf(kleur, { emissief = 0.16, plat = false, doorzichtig = 0, dubbel = false } = {}) {
   const sleutel = `${kleur}|${emissief}|${plat}|${doorzichtig}|${dubbel}`;
@@ -38,6 +48,7 @@ export function verf(kleur, { emissief = 0.16, plat = false, doorzichtig = 0, du
     transparent: doorzichtig > 0,
     opacity: doorzichtig > 0 ? doorzichtig : 1,
     side: dubbel ? THREE.DoubleSide : THREE.FrontSide,
+    map: blokKaart,
   });
   cache.set(sleutel, m);
   return m;

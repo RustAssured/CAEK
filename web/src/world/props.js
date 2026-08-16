@@ -47,10 +47,11 @@ export function vlak(b, h, materiaal) {
  * Grond en platforms
  * ------------------------------------------------------------------ */
 
-/* De geschilderde vloer. Wordt vóór het bouwen ingeladen (zie world/vloer.js);
- * is hij er niet, dan valt platform() terug op de oude opbouw uit blokjes. */
-let vloerTextuur = null;
-export function zetVloerTextuur(textuur) { vloerTextuur = textuur; }
+/* De geschilderde platen. Worden vóór het bouwen ingeladen (zie
+ * world/vloer.js); zijn ze er niet, dan valt alles terug op de oude opbouw
+ * uit blokjes en blijft het spel gewoon werken. */
+export const TEX = {};
+export function zetTexturen(gevonden) { Object.assign(TEX, gevonden); }
 
 /* Maatvoering van de vloerplaat.
  *
@@ -65,6 +66,12 @@ export function zetVloerTextuur(textuur) { vloerTextuur = textuur; }
  * om te lezen als straat en laag genoeg om niets af te dekken. */
 const VLOER = { TEGEL: 9.0, RAND: 0.68, BOVEN_MAX: 0.55 };
 
+/* De kratten waar je op springt zijn een eigen plaat: bakkersgerei in plaats
+ * van zwevende stukken stoep, zodat je in één oogopslag ziet waar je op kunt
+ * staan. `RAND` is waar de bovenkant van het krat zit -- daar staat de speler
+ * op, dus die lijn moet op de collider vallen. */
+const KRAT = { TEGEL: 1.7, RAND: 0.36 };
+
 /**
  * Een looppad. Geeft de mesh terug; de collider maakt level.js zelf.
  *
@@ -78,7 +85,8 @@ const VLOER = { TEGEL: 9.0, RAND: 0.68, BOVEN_MAX: 0.55 };
  * lijken te lopen in plaats van erachter te verdwijnen.
  */
 export function platform(breedte, dikte = 0.9, kleur = PALET.steen, { top = PALET.blauwLicht, zwevend = false } = {}) {
-  if (vloerTextuur) return geschilderdPlatform(breedte, zwevend);
+  const plaat = zwevend ? (TEX.springblok || TEX.vloer) : TEX.vloer;
+  if (plaat) return geschilderdPlatform(breedte, zwevend, plaat);
   const groep = new THREE.Group();
   const romp = doos(breedte, dikte, 4.2, kleur, { plat: true });
   romp.position.y = -dikte / 2;
@@ -104,34 +112,48 @@ export function platform(breedte, dikte = 0.9, kleur = PALET.steen, { top = PALE
  * de onderste strook gebruikt -- de voorste rij stenen plus de zijkant. */
 const ZWEVEND_DEEL = 0.56;
 
-function geschilderdPlatform(breedte, zwevend = false) {
+function geschilderdPlatform(breedte, zwevend, plaat) {
   const groep = new THREE.Group();
 
-  let deel = zwevend ? ZWEVEND_DEEL : 1;
-  let hoogte = (VLOER.TEGEL / 2) * deel;
-  let rand = zwevend ? (VLOER.RAND - (1 - deel)) / deel : VLOER.RAND;
+  // Een krat is een eigen plaat met eigen verhoudingen: die gebruiken we
+  // heel, alleen kleiner. Alleen als we terugvallen op de straatplaat wordt
+  // er een strook uit gesneden.
+  const eigenKrat = zwevend && plaat === TEX.springblok;
+  let deel = zwevend && !eigenKrat ? ZWEVEND_DEEL : 1;
+  const beeld = plaat.image;
+  const verhouding = beeld ? beeld.height / beeld.width : 0.5;
+  const tegel = eigenKrat ? KRAT.TEGEL : VLOER.TEGEL;
+  let hoogte = tegel * verhouding * deel;
+  let rand = eigenKrat ? KRAT.RAND
+    : (zwevend ? (VLOER.RAND - (1 - deel)) / deel : VLOER.RAND);
 
   // De band boven de grondlijn aftoppen, anders verdwijnt de halve wereld
   // erachter. Wat er van de plaat afvalt is de bovenkant, dus de uitsnede
-  // schuift mee naar beneden.
-  const boven = hoogte * rand;
-  if (boven > VLOER.BOVEN_MAX) {
-    const weg = (boven - VLOER.BOVEN_MAX) / (VLOER.TEGEL / 2);
-    deel -= weg;
-    hoogte = (VLOER.TEGEL / 2) * deel;
-    rand = VLOER.BOVEN_MAX / hoogte;
+  // schuift mee naar beneden. Kratten hebben dat niet nodig: die steken van
+  // zichzelf al nauwelijks boven de lijn uit.
+  if (!eigenKrat) {
+    const boven = hoogte * rand;
+    if (boven > VLOER.BOVEN_MAX) {
+      const weg = (boven - VLOER.BOVEN_MAX) / (tegel * verhouding);
+      deel -= weg;
+      hoogte = tegel * verhouding * deel;
+      rand = VLOER.BOVEN_MAX / hoogte;
+    }
   }
 
-  const textuur = vloerTextuur.clone();
+  const textuur = plaat.clone();
   textuur.needsUpdate = true;
   textuur.wrapS = THREE.RepeatWrapping;
   textuur.wrapT = THREE.ClampToEdgeWrapping;
-  textuur.repeat.set(breedte / VLOER.TEGEL, deel);
+  textuur.repeat.set(breedte / tegel, deel);
   // elk platform een eigen stukje straat, anders herhaalt het zichtbaar;
   // verticaal snijden we de bovenkant eraf, dus offset.y volgt uit `deel`
   textuur.offset.set((breedte * 0.37) % 1, 1 - deel);
 
-  const materiaal = new THREE.MeshBasicMaterial({ map: textuur, toneMapped: false });
+  const materiaal = new THREE.MeshBasicMaterial({
+    map: textuur, toneMapped: false,
+    transparent: eigenKrat, alphaTest: eigenKrat ? 0.35 : 0,
+  });
   // Ook deze plaat is al olieverf; er nog een laag Kuwahara overheen leggen
   // maakt er pap van. Een klein beetje mag, zodat hij niet los komt te staan
   // van de props die er wél doorheen gaan.
@@ -593,6 +615,8 @@ export function deur(regels, breedte = 3, hoogte = 4.6) {
  * kan bakken, en dat is een ander soort resultaat.
  */
 export function teamstand(naam, { kleur = PALET.goud, enabler = false } = {}) {
+  if (TEX.teamstand) return geschilderdeTeamstand(naam, enabler);
+
   const groep = new THREE.Group();
 
   const blad = doos(2.4, 0.22, 1.6, PALET.korst);
@@ -635,7 +659,6 @@ export function teamstand(naam, { kleur = PALET.goud, enabler = false } = {}) {
   groep.add(bordje);
   groep.userData.bordje = bordje;
 
-  // het oventje waar hun cadans aan af te lezen is
   const oventje = doos(0.9, 0.9, 0.7, PALET.blauw, { plat: true });
   oventje.position.set(-1.5, 0.45, 0);
   groep.add(oventje);
@@ -644,6 +667,59 @@ export function teamstand(naam, { kleur = PALET.goud, enabler = false } = {}) {
   groep.add(lampje);
   groep.userData.lampje = lampje;
 
+  // Cadans: hoe deze stand laat zien dat hij in de maat loopt of net niet.
+  groep.userData.cadans = (puls, uitDeMaat) => {
+    lampje.material = gloed(uitDeMaat ? PALET.blauwLicht : PALET.oranje, 0.9 + puls * 0.5);
+    resultaat.position.y = 1.12 + Math.max(0, puls) * 0.07;
+  };
+  return groep;
+}
+
+/* Waar op de plaat het naambord zit, en hoe hoog het kraampje in de wereld
+ * staat. Het bord op de tekening is met opzet leeg: de naam wordt door het
+ * spel gerenderd, zodat de teamlijst aan te passen is zonder opnieuw te
+ * renderen. */
+const STAND = { HOOGTE: 3.4, BORD_Y: 0.845, BORD_BREEDTE: 0.52 };
+
+function geschilderdeTeamstand(naam, enabler) {
+  const groep = new THREE.Group();
+
+  const beeld = TEX.teamstand.image;
+  const verhouding = beeld ? beeld.width / beeld.height : 1;
+  const hoogte = STAND.HOOGTE;
+  const breedte = hoogte * verhouding;
+
+  const materiaal = new THREE.MeshBasicMaterial({
+    map: TEX.teamstand, transparent: false, alphaTest: 0.4, toneMapped: false,
+  });
+  maskeer(materiaal, 0.12);
+  const vlak = new THREE.Mesh(VLAK, materiaal);
+  vlak.scale.set(breedte, hoogte, 1);
+  vlak.position.y = hoogte / 2;
+  groep.add(vlak);
+
+  // Enablerteams bakken niets maar maken mogelijk dat de rest kan bakken;
+  // dat verschil blijft, alleen nu als een kleurzweem over dezelfde plaat.
+  if (enabler) materiaal.color.setHex(0x9fc2ff);
+
+  const bordje = label(naam, { breedte: breedte * STAND.BORD_BREEDTE, grootte: 52 });
+  bordje.position.set(0, hoogte * STAND.BORD_Y, 0.06);
+  groep.add(bordje);
+  groep.userData.bordje = bordje;
+
+  /* Cadans op een platte plaat.
+   *
+   * Bij de 3D-versie knipperde het oventje en wipte de taart; hier is alles
+   * één tekening. Dus doet het kraampje als geheel mee: het ademt een tikje
+   * op en neer en de warmte in de oven pulseert via de kleur. Teams die niet
+   * in de maat lopen krijgen een koelere zweem en een trager ritme -- geen
+   * oordeel, gewoon zichtbaar. */
+  groep.userData.cadans = (puls, uitDeMaat) => {
+    vlak.position.y = hoogte / 2 + Math.max(0, puls) * 0.05;
+    const warm = 1.0 + puls * 0.10;
+    if (uitDeMaat) materiaal.color.setRGB(warm * 0.82, warm * 0.88, warm * 1.05);
+    else if (!enabler) materiaal.color.setRGB(warm, warm * 0.97, warm * 0.92);
+  };
   return groep;
 }
 

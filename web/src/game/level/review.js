@@ -107,9 +107,7 @@ export function bouwReview(level, spel, { nummer, sectieId, taak, zaalBreedte, u
     const tempo = uitDeMaat ? 1.35 : 2.2;
     const faseVerschuiving = uitDeMaat ? 1.9 : 0;
     level.tik((dt, speler, sp) => {
-      const puls = Math.sin(sp.klok * tempo + faseVerschuiving);
-      stand.userData.lampje.material = gloed(uitDeMaat ? PALET.blauwLicht : PALET.oranje, 0.9 + puls * 0.5);
-      stand.userData.resultaat.position.y = 1.12 + Math.max(0, puls) * 0.07;
+      stand.userData.cadans?.(Math.sin(sp.klok * tempo + faseVerschuiving), uitDeMaat);
     });
   });
 

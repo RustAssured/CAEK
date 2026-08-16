@@ -9,32 +9,59 @@
  * maken of de textuur er is. Vandaar dat main.js hierop wacht. */
 
 import * as THREE from 'three';
-import { zetVloerTextuur } from './props.js';
+import { zetTexturen } from './props.js';
+import { zetBlokKaart } from './materialen.js';
 
 const MAP = './assets/textuur/';
+const lader = new THREE.TextureLoader();
 
-export async function laadVloer() {
+/* Hoe elke plaat herhaalt. De vloer en de kratten tegelen alleen zijwaarts,
+ * de blokplaat in beide richtingen, en losse objecten helemaal niet. */
+const HERHALING = {
+  vloer: [THREE.RepeatWrapping, THREE.ClampToEdgeWrapping],
+  springblok: [THREE.RepeatWrapping, THREE.ClampToEdgeWrapping],
+  blok: [THREE.RepeatWrapping, THREE.RepeatWrapping],
+  publiek: [THREE.RepeatWrapping, THREE.ClampToEdgeWrapping],
+  teamstand: [THREE.ClampToEdgeWrapping, THREE.ClampToEdgeWrapping],
+};
+
+async function haal(bestand, naam) {
+  const textuur = await lader.loadAsync(`${MAP}${bestand}`);
+  const [s, t] = HERHALING[naam] || [THREE.ClampToEdgeWrapping, THREE.ClampToEdgeWrapping];
+  textuur.colorSpace = THREE.SRGBColorSpace;
+  textuur.wrapS = s;
+  textuur.wrapT = t;
+  textuur.minFilter = THREE.LinearMipmapLinearFilter;
+  textuur.magFilter = THREE.LinearFilter;
+  textuur.anisotropy = 4;
+  return textuur;
+}
+
+/**
+ * Laadt alle geschilderde platen die de wereld gebruikt.
+ *
+ * Moet klaar zijn vóór bouwLevel(): props.platform() en props.teamstand()
+ * kijken bij het maken of hun plaat bestaat en kiezen daar hun opbouw op.
+ */
+export async function laadTexturen() {
   let manifest;
   try {
     const antwoord = await fetch(`${MAP}manifest.json`, { cache: 'no-cache' });
     manifest = antwoord.ok ? await antwoord.json() : {};
   } catch {
-    return false;
+    return {};
   }
-  if (!manifest.vloer) return false;
 
-  try {
-    const textuur = await new THREE.TextureLoader().loadAsync(`${MAP}${manifest.vloer.bestand}`);
-    textuur.colorSpace = THREE.SRGBColorSpace;
-    textuur.wrapS = THREE.RepeatWrapping;
-    textuur.wrapT = THREE.ClampToEdgeWrapping;
-    textuur.minFilter = THREE.LinearMipmapLinearFilter;
-    textuur.magFilter = THREE.LinearFilter;
-    textuur.anisotropy = 4;
-    zetVloerTextuur(textuur);
-    return true;
-  } catch (fout) {
-    console.warn('CAEK: vloertextuur niet geladen:', fout.message);
-    return false;
-  }
+  const gevonden = {};
+  await Promise.all(Object.entries(manifest).map(async ([naam, info]) => {
+    try {
+      gevonden[naam] = await haal(info.bestand, naam);
+    } catch (fout) {
+      console.warn(`CAEK: textuur "${naam}" niet geladen:`, fout.message);
+    }
+  }));
+
+  zetTexturen(gevonden);
+  if (gevonden.blok) zetBlokKaart(gevonden.blok);
+  return gevonden;
 }

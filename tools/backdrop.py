@@ -95,6 +95,27 @@ def maak_naadloos(vel, deel=0.12):
     return Image.fromarray(np.clip(kern, 0, 255).astype(np.uint8), "RGBA")
 
 
+def naar_detailkaart(vel, sterkte=0.5, midden=0.88):
+    """
+    Maak van een geschilderd oppervlak een kaart die kleur moduleert.
+
+    De blokplaat gaat naar honderden dozen die elk hun eigen kleur hebben --
+    goud, groen, rood. Zou je de plaat rechtstreeks als textuur gebruiken, dan
+    werd alles blauw pleisterwerk en was de kleurcodering weg. Als grijswaarde
+    rond middengrijs vermenigvuldigt hij juist met die kleur: het blok houdt
+    zijn kleur en krijgt er penseelwerk bij.
+    """
+    arr = np.asarray(vel.convert("RGB"), dtype=np.float32) / 255
+    grijs = arr @ np.array([0.2126, 0.7152, 0.0722], dtype=np.float32)
+    # Rond 0.88 en niet rond 0.5: deze kaart wordt vermenigvuldigd met de
+    # kleur van het materiaal, en middengrijs zou alles halveren. Nu wordt
+    # het penseelwerk zichtbaar zonder dat de hele wereld donkerder wordt.
+    grijs = midden + (grijs - float(grijs.mean())) * sterkte
+    grijs = np.clip(grijs, 0.55, 1.0) * 255
+    uit = np.dstack([grijs, grijs, grijs, np.asarray(vel.convert("RGBA"))[..., 3]])
+    return Image.fromarray(uit.astype(np.uint8), "RGBA")
+
+
 def naadfout(vel):
     """Hoe erg botst de linkerrand met de rechter? Puur ter informatie."""
     arr = np.asarray(vel, dtype=np.float32)
@@ -110,6 +131,8 @@ def main():
     ap.add_argument("--bestand", help="losse plaat verwerken in plaats van de vaste lagen")
     ap.add_argument("--naam", help="uitvoernaam bij --bestand")
     ap.add_argument("--uit", help="uitvoermap (standaard web/assets/achtergrond)")
+    ap.add_argument("--grijs", action="store_true",
+                    help="omzetten naar een grijze detailkaart rond middengrijs, zodat hij de kleur van het materiaal moduleert in plaats van vervangt")
     args = ap.parse_args()
 
     uitmap = os.path.join(REPO, args.uit) if args.uit else UIT
@@ -143,6 +166,10 @@ def main():
         else:
             vel = vel.convert("RGBA")
             print("  geen magenta gevonden, plaat blijft dekkend")
+
+        if args.grijs:
+            vel = naar_detailkaart(vel)
+            print("  omgezet naar detailkaart rond middengrijs")
 
         voor = naadfout(vel)
         if args.naad > 0:

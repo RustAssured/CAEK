@@ -10,7 +10,7 @@ import { Schilder } from './render/composer.js';
 import { Invoer } from './engine/input.js';
 import { Geluid } from './engine/audio.js';
 import { Level, zetLicht } from './world/level.js';
-import { laadVloer } from './world/vloer.js';
+import { laadTexturen } from './world/vloer.js';
 import { bouwLevel } from './game/level/index.js';
 import { laadCaek, laadKarakter, Caek } from './game/caek.js';
 import { Cupcaek, laadCupcaek } from './game/cupcaek.js';
@@ -87,9 +87,9 @@ class Spel {
 
   async laad() {
     this.level = new Level(this.scene);
-    // de vloertextuur moet er zijn vóór het bouwen: platform() kijkt bij het
-    // maken of hij bestaat en kiest daar zijn opbouw op
-    await laadVloer();
+    // de platen moeten er zijn vóór het bouwen: platform() en teamstand()
+    // kijken bij het maken of hun plaat bestaat en kiezen daar hun opbouw op
+    await laadTexturen();
     if (SCHAKELS.sprites) await this.#laadSprites();
     else await this.#laadModellen();
 

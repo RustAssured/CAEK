@@ -71,6 +71,57 @@ export function trekDraad(level, van, naar, opties = {}) {
  * de stakeholders ín het cluster zitten is precies het punt.
  */
 export function zetPubliek(level, { x, aantal = 14, breedte = 26, z = 4.0, label = null }) {
+  const plaat = props.TEX.publiek;
+  const hoofden = plaat
+    ? geschilderdPubliek(level, x, breedte, z)
+    : bollenPubliek(level, x, aantal, breedte, z);
+
+  if (label) {
+    // Klein en aan de kant. Een banner van negen meter vlak voor de camera
+    // dekt de halve zaal af, en juist die zaal is het punt.
+    const bordje = props.label(label, { breedte: 5.4, grootte: 44, plaat: true });
+    level.plaats(bordje, x - breedte / 2 - 1.5, 2.6, z + 1.2);
+  }
+  return hoofden;
+}
+
+/* Eén geschilderde strook in plaats van tweeëndertig bollen per zaal. Het
+ * publiek zit met opzet aan de kant van de speler en niet achter een muur:
+ * dat de stakeholders ín het cluster zitten is precies het punt. */
+function geschilderdPubliek(level, x, breedte, z) {
+  /* Het publiek zit tússen de camera en het podium, dus het staat er dicht
+   * op en wordt makkelijk te groot. Op vijf eenheden per herhaling zijn de
+   * koppen ongeveer op mensmaat, en de onderrand ligt laag genoeg dat de
+   * straat en de voeten van de karakters zichtbaar blijven -- die zaal is het
+   * punt, niet de achterhoofden ervoor. */
+  const beeld = props.TEX.publiek.image;
+  const verhouding = beeld ? beeld.height / beeld.width : 0.5;
+  const tegel = 5.2;
+  const hoogte = tegel * verhouding;
+  const bodem = -1.55;
+
+  const textuur = props.TEX.publiek.clone();
+  textuur.needsUpdate = true;
+  textuur.wrapS = THREE.RepeatWrapping;
+  textuur.repeat.set(breedte / tegel, 1);
+
+  const materiaal = new THREE.MeshBasicMaterial({
+    map: textuur, transparent: false, alphaTest: 0.4, toneMapped: false,
+  });
+  const vlak = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), materiaal);
+  vlak.scale.set(breedte, hoogte, 1);
+  level.plaats(vlak, x, bodem + hoogte / 2, z + 1.6);
+
+  // Meedeinen doet de hele rij tegelijk; slapen zakt hem weg.
+  level.tik((dt, speler, s) => {
+    const slaapt = s.vlaggen.publiekSlaapt;
+    vlak.position.y = bodem + hoogte / 2 - (slaapt ? 0.22 : 0)
+      + Math.sin(s.klok * (slaapt ? 0.8 : 2.3)) * (slaapt ? 0.02 : 0.05);
+  });
+  return [vlak];
+}
+
+function bollenPubliek(level, x, aantal, breedte, z) {
   const hoofden = [];
   for (let i = 0; i < aantal; i++) {
     const rij = i % 2;
@@ -83,13 +134,6 @@ export function zetPubliek(level, { x, aantal = 14, breedte = 26, z = 4.0, label
     const romp = props.doos(0.64, 0.85, 0.46, kleur === PALET.room ? PALET.blauwLicht : PALET.blauw, { emissief: 0.1 });
     level.plaats(romp, hx, 0.45 + rij * 0.16, z + rij * 1.8);
   }
-  if (label) {
-    // Klein en aan de kant. Een banner van negen meter vlak voor de camera
-    // dekt de halve zaal af, en juist die zaal is het punt.
-    const bordje = props.label(label, { breedte: 5.4, grootte: 44, plaat: true });
-    level.plaats(bordje, x - breedte / 2 - 1.5, 2.6, z + 1.2);
-  }
-  // zacht meedeinen; als ze slapen wordt het traag en laag
   level.tik((dt, speler, s) => {
     for (let i = 0; i < hoofden.length; i++) {
       const slaapt = s.vlaggen.publiekSlaapt;
