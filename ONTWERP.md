@@ -238,8 +238,12 @@ wat een mascotte hoort te betekenen.
 
 Daarna wordt het stil. Eerst het lawaai, dan het afscheid. Nooit andersom.
 
-**[?] SuperCupcaek.** Als SuperCaek is wat het cluster wordt, hoort zij daar
-ook. Ik heb haar model niet, dus ik houd de plek vrij.
+**SuperCupcaek** wacht nog even — plek blijft vrij.
+
+**Modellen:** SuperCaek is binnen en deelt het skelet van Caek (24 botten,
+identieke namen), dus hij leent idle, lopen en springen gewoon van Caek. Er
+hoeft niets extra's geanimeerd te worden. Cupcaeks GLB is bij het uploaden
+misgegaan — nu nog een placeholder uit primitieven.
 
 ### De teams
 
@@ -270,8 +274,9 @@ Staat inmiddels in `config.js`:
   BPMONE · Tiem
 - **Enablerteams (2)** — TET · Architectuur
 
-**[JIJ]** Nog aan te vullen: wie er in het publiek horen (UV/Uitvoering,
-vakgroepen, clusterleiding) en de volledige aftitelingslijst.
+In het publiek: **stakeholders, binnen en buiten UWV**.
+
+**[JIJ]** Nog aan te vullen: de aftitelingslijst.
 
 ### Woo Jung FM
 

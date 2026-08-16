@@ -26,15 +26,31 @@ REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SRC = os.path.join(REPO, "assets")
 OUT = os.path.join(REPO, "web", "assets", "caek.glb")
 
-# bronbestand -> clipnaam die de game gebruikt (zie web/src/game/caek.js)
-CLIPS = [
-    ("CAEK_idle.glb", "idle"),
-    ("CAEK_lopen.glb", "lopen"),
-    ("CAEK_rennen.glb", "rennen"),
-    ("CAEK_spring.glb", "springen"),
-    ("CAEK_rig.glb", "bind"),
-]
-BASE = CLIPS[0][0]
+# Per karakter: bronbestand -> clipnaam die de game gebruikt.
+# Het eerste bestand levert mesh, skelet en texture; de rest alleen animatie.
+KARAKTERS = {
+    "caek": {
+        "uit": "caek.glb",
+        "clips": [
+            ("CAEK_idle.glb", "idle"),
+            ("CAEK_lopen.glb", "lopen"),
+            ("CAEK_rennen.glb", "rennen"),
+            ("CAEK_spring.glb", "springen"),
+            ("CAEK_rig.glb", "bind"),
+        ],
+    },
+    # SuperCaek deelt het skelet van Caek (zelfde 24 joints, zelfde namen),
+    # dus hij heeft aan zijn eigen renclip genoeg — de rest leent hij van Caek
+    # op de AnimationMixer. Eén los model, geen dubbele animaties nodig.
+    "supercaek": {
+        "uit": "supercaek.glb",
+        "clips": [("Supercaek_run.glb", "rennen")],
+    },
+    "cupcaek": {
+        "uit": "cupcaek.glb",
+        "clips": [("Cupcaek.glb", "lopen")],
+    },
+}
 
 GLB_MAGIC = 0x46546C67
 CHUNK_JSON = 0x4E4F534A
@@ -130,12 +146,26 @@ def main():
     ap.add_argument("--texture", type=int, default=1024, help="max texture-formaat in pixels (0 = niet schalen)")
     ap.add_argument("--format", choices=["jpeg", "png"], default="jpeg")
     ap.add_argument("--quality", type=int, default=88)
-    ap.add_argument("--out", default=OUT)
+    ap.add_argument("--karakter", choices=sorted(KARAKTERS), default="caek")
+    ap.add_argument("--out")
     args = ap.parse_args()
 
-    base, base_bin = read_glb(os.path.join(SRC, BASE))
+    karakter = KARAKTERS[args.karakter]
+    CLIPS = karakter["clips"]
+    uitpad = args.out or os.path.join(REPO, "web", "assets", karakter["uit"])
+
+    ontbreekt = [f for f, _ in CLIPS if not os.path.exists(os.path.join(SRC, f))]
+    if ontbreekt:
+        print(f"ontbrekende bronbestanden: {', '.join(ontbreekt)}", file=sys.stderr)
+        return 1
+    leeg = [f for f, _ in CLIPS if os.path.getsize(os.path.join(SRC, f)) < 1024]
+    if leeg:
+        print(f"deze bestanden zijn (bijna) leeg, upload mislukt?: {', '.join(leeg)}", file=sys.stderr)
+        return 1
+
+    base, base_bin = read_glb(os.path.join(SRC, CLIPS[0][0]))
     joint_names = [n.get("name") for n in base["nodes"]]
-    print(f"basis: {BASE} ({len(base['nodes'])} nodes, {len(joint_names)} namen)")
+    print(f"basis: {CLIPS[0][0]} ({len(base['nodes'])} nodes, {len(joint_names)} namen)")
 
     builder = BufferBuilder()
 
@@ -223,8 +253,8 @@ def main():
     json_chunk += b" " * pad4(len(json_chunk))
 
     total = 12 + 8 + len(json_chunk) + 8 + len(blob)
-    os.makedirs(os.path.dirname(args.out), exist_ok=True)
-    with open(args.out, "wb") as f:
+    os.makedirs(os.path.dirname(uitpad), exist_ok=True)
+    with open(uitpad, "wb") as f:
         f.write(struct.pack("<III", GLB_MAGIC, 2, total))
         f.write(struct.pack("<II", len(json_chunk), CHUNK_JSON))
         f.write(json_chunk)
@@ -232,9 +262,10 @@ def main():
         f.write(blob)
 
     src_total = sum(os.path.getsize(os.path.join(SRC, f)) for f, _ in CLIPS if os.path.exists(os.path.join(SRC, f)))
-    print(f"\n{os.path.relpath(args.out, REPO)}: {total/1e6:.2f} MB (bron: {src_total/1e6:.1f} MB)")
+    print(f"\n{os.path.relpath(uitpad, REPO)}: {total/1e6:.2f} MB (bron: {src_total/1e6:.1f} MB)")
     print("clips:", ", ".join(a["name"] for a in base["animations"]))
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main() or 0)
