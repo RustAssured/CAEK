@@ -313,6 +313,37 @@ def lijn_uit(frames, marge=0.07):
     return uit
 
 
+def ontdubbel(frames, drempel=6.0):
+    """
+    Gooi frames weg die nauwelijks van hun voorganger verschillen.
+
+    Getekende vellen zitten vaak vol met bijna-duplicaten: acht vakjes gevuld
+    met vijf werkelijk verschillende standen. Speel je dat af, dan lijkt het
+    of de animatie om de zoveel tijd blijft haken -- twee frames staan stil,
+    dan een grote sprong. Eruit halen maakt de pas gelijkmatiger, ook al zijn
+    het er daarna minder.
+    """
+    if len(frames) < 4:
+        return frames, []
+    maat = frames[0].size
+    vlakken = [np.asarray(f.resize(maat).getchannel("A"), dtype=np.float32) / 255 for f in frames]
+
+    houden = [0]
+    weg = []
+    for i in range(1, len(frames)):
+        verschil = float(np.abs(vlakken[i] - vlakken[houden[-1]]).mean()) * 100
+        if verschil < drempel:
+            weg.append(i + 1)
+        else:
+            houden.append(i)
+    # de laatste mag ook niet op de eerste lijken, want het loopt rond
+    if len(houden) > 3:
+        rond = float(np.abs(vlakken[houden[-1]] - vlakken[houden[0]]).mean()) * 100
+        if rond < drempel:
+            weg.append(houden.pop() + 1)
+    return [frames[i] for i in houden], weg
+
+
 def strip(frames):
     B, H = frames[0].size
     vel = Image.new("RGBA", (B * len(frames), H), (0, 0, 0, 0))
@@ -353,7 +384,7 @@ def al_transparant(vel):
     return float((a < 8).mean()) > 0.25
 
 
-def verwerk(pad, naam, rijnamen, hoogte, fps, vlekdrempel, formaat, kwaliteit, gatgrens):
+def verwerk(pad, naam, rijnamen, hoogte, fps, vlekdrempel, formaat, kwaliteit, gatgrens, ontdubbelen):
     vel = Image.open(pad)
     print(f"\n{os.path.basename(pad)} -> {naam}  ({vel.width}x{vel.height})")
 
@@ -385,6 +416,10 @@ def verwerk(pad, naam, rijnamen, hoogte, fps, vlekdrempel, formaat, kwaliteit, g
             continue
 
         frames = lijn_uit(frames)
+        if ontdubbelen > 0:
+            frames, weg = ontdubbel(frames, ontdubbelen)
+            if weg:
+                print(f"    {rijnaam:9s} {len(weg)} bijna-duplicaat frames eruit: {weg}")
         if hoogte and frames[0].height != hoogte:
             s = hoogte / frames[0].height
             frames = [f.resize((max(1, round(f.width * s)), hoogte), Image.LANCZOS) for f in frames]
@@ -417,6 +452,8 @@ def main():
     ap.add_argument("--hoogte", type=int, default=288, help="hoogte van één frame in de strip")
     ap.add_argument("--formaat", choices=["webp", "png"], default="webp")
     ap.add_argument("--kwaliteit", type=int, default=88)
+    ap.add_argument("--ontdubbelen", type=float, default=6.0,
+                    help="frames die minder dan dit percentage van hun voorganger verschillen gaan eruit (0 = uit)")
     ap.add_argument("--gatgrens", type=int, default=420,
                     help="ingesloten wit kleiner dan dit blijft staan (oogglimlicht); groter gaat eruit (ruimte tussen de benen)")
     ap.add_argument("--fps", type=int, default=12)
@@ -453,7 +490,7 @@ def main():
     for pad in vellen:
         naam = args.naam if (args.vel and args.naam) else karakter_van(os.path.basename(pad))
         manifest[naam] = verwerk(pad, naam, rijnamen, args.hoogte, args.fps, args.vlekdrempel,
-                                 args.formaat, args.kwaliteit, args.gatgrens)
+                                 args.formaat, args.kwaliteit, args.gatgrens, args.ontdubbelen)
 
     os.makedirs(UIT, exist_ok=True)
     with open(os.path.join(UIT, "manifest.json"), "w", encoding="utf-8") as f:

@@ -37,7 +37,7 @@ except ImportError as fout:
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from sprites import (  # noqa: E402
     al_transparant, snij_achtergrond, gooi_vlekjes_weg,
-    vind_figuren, cluster_rijen, splits_brede,
+    vind_figuren, cluster_rijen, splits_brede, lijn_uit,
 )
 
 BLOKJES = " ▁▂▃▄▅▆▇█"
@@ -188,6 +188,8 @@ def main():
     ap.add_argument("--rijen", type=int, default=1, help="hoeveel rijen staan er op het vel")
     ap.add_argument("--rij", type=int, default=1, help="welke rij is de looppas (1-gebaseerd)")
     ap.add_argument("--vlekdrempel", type=int, default=900)
+    ap.add_argument("--ruw", action="store_true", help="meet de tekeningen zoals ze zijn, zonder uitlijnen")
+    ap.add_argument("--deel", type=int, default=0, help="beoordeel ook elk N-de frame los")
     args = ap.parse_args()
 
     vel = Image.open(args.vel)
@@ -213,7 +215,24 @@ def main():
     frames = [schoon.crop((x0, yb, x1, yo)) for _, _, x0, x1 in groep]
     frames = [f for f in frames if f.getbbox()]
 
-    return 0 if beoordeel(frames, "looppas") else 2
+    # Meten na het uitlijnen, want dat is wat er straks afspeelt. Losse
+    # tekeningen driften nu eenmaal -- de figuur wordt per frame een tikje
+    # kleiner of zakt weg -- en dat corrigeert de pijplijn al weg. Zou je de
+    # ruwe frames meten, dan keur je iets af om een fout die er niet meer is.
+    if not args.ruw:
+        frames = lijn_uit(frames)
+        print("  frames uitgelijnd (schaal op het bovenlijf, voeten op één grondlijn)")
+
+    goed = beoordeel(frames, "looppas")
+
+    if args.deel:
+        stap = args.deel
+        for begin in range(stap):
+            deel = frames[begin::stap]
+            if len(deel) >= 4:
+                beoordeel(deel, f"elk {stap}e frame vanaf {begin + 1}")
+
+    return 0 if goed else 2
 
 
 if __name__ == "__main__":
