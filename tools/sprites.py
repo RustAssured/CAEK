@@ -486,16 +486,30 @@ def main():
         print(f"geen vellen gevonden in {BRON}", file=sys.stderr)
         return 1
 
+    # Bestaand manifest bijwerken in plaats van overschrijven: zo kun je één
+    # losse rij opnieuw aanleveren zonder de rest kwijt te raken.
+    manifestpad = os.path.join(UIT, "manifest.json")
     manifest = {}
+    if os.path.exists(manifestpad):
+        with open(manifestpad, encoding="utf-8") as f:
+            manifest = json.load(f)
+
     for pad in vellen:
         naam = args.naam if (args.vel and args.naam) else karakter_van(os.path.basename(pad))
-        manifest[naam] = verwerk(pad, naam, rijnamen, args.hoogte, args.fps, args.vlekdrempel,
-                                 args.formaat, args.kwaliteit, args.gatgrens, args.ontdubbelen)
+        nieuw = verwerk(pad, naam, rijnamen, args.hoogte, args.fps, args.vlekdrempel,
+                        args.formaat, args.kwaliteit, args.gatgrens, args.ontdubbelen)
+        # oude strips van vervangen animaties opruimen: het aantal frames zit
+        # in de bestandsnaam, dus een nieuwe versie krijgt een andere naam
+        for rij, info in nieuw.items():
+            for oud in os.listdir(UIT):
+                if oud.startswith(f"{naam}_{rij}_") and oud != info["bestand"] and not oud.endswith(".gif"):
+                    os.remove(os.path.join(UIT, oud))
+        manifest.setdefault(naam, {}).update(nieuw)
 
     os.makedirs(UIT, exist_ok=True)
-    with open(os.path.join(UIT, "manifest.json"), "w", encoding="utf-8") as f:
+    with open(manifestpad, "w", encoding="utf-8") as f:
         json.dump(manifest, f, indent=2, ensure_ascii=False)
-    print(f"\nmanifest: {os.path.relpath(os.path.join(UIT, 'manifest.json'), REPO)}")
+    print(f"\nmanifest: {os.path.relpath(manifestpad, REPO)}")
     return 0
 
 

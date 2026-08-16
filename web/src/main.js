@@ -14,12 +14,13 @@ import { bouwLevel } from './game/level/index.js';
 import { laadCaek, laadKarakter, Caek } from './game/caek.js';
 import { Cupcaek, laadCupcaek } from './game/cupcaek.js';
 import { startSuperCaek } from './game/level/inspect.js';
+import { laadSprites, SpritePoppetje } from './game/sprite.js';
 import { ScopeCreep } from './game/scopecreep.js';
 import { Hud } from './ui/hud.js';
 import { Dialoog, pauze } from './ui/dialoog.js';
 import { Paneel } from './ui/paneel.js';
 import { toonEindscherm } from './ui/eindscherm.js';
-import { CAMERA, NATUURKUNDE, PI, SECTIES, SUPERCAEK, WAARDE } from './config.js';
+import { CAMERA, NATUURKUNDE, PI, SCHAKELS, SECTIES, SUPERCAEK, WAARDE } from './config.js';
 
 class Spel {
   constructor(canvas) {
@@ -84,22 +85,9 @@ class Spel {
   }
 
   async laad() {
-    const [model, cupcaekModel, superModel] = await Promise.all([
-      laadCaek('./assets/caek.glb'),
-      laadCupcaek('./assets/cupcaek.glb'),
-      // SuperCaek deelt Caeks skelet, dus hij leent zijn clips; mislukt het
-      // laden, dan valt de transformatie terug op de blauwe tint en de cape
-      laadKarakter('./assets/supercaek.glb', NATUURKUNDE.spelerHoogte * SUPERCAEK.hoogteFactor)
-        .catch((fout) => { console.warn('SuperCaek-model niet geladen:', fout.message); return null; }),
-    ]);
-
     this.level = new Level(this.scene);
-    this.speler = new Caek(model, this.level, this.geluid);
-    this.speler.zetSuperModel(superModel);
-    this.scene.add(this.speler.groep);
-
-    this.cupcaek = new Cupcaek(cupcaekModel);
-    this.scene.add(this.cupcaek.groep);
+    if (SCHAKELS.sprites) await this.#laadSprites();
+    else await this.#laadModellen();
 
     this.scopeCreep = new ScopeCreep();
     this.scopeCreep.hoogsteGroei = 0;
@@ -110,6 +98,39 @@ class Spel {
     this.speler.positie.set(1, 1, 0);
     this.speler.zetCheckpoint(1, 1);
     this.cupcaek.positie.set(-1, 0, 0.9);
+  }
+
+  /** De getekende karakters. */
+  async #laadSprites() {
+    const [caek, cup, super_] = await Promise.all([
+      laadSprites('caek'), laadSprites('cupcaek'), laadSprites('supercaek'),
+    ]);
+
+    const poppetje = new SpritePoppetje(caek);
+    this.speler = new Caek(null, this.level, this.geluid, { poppetje });
+    this.speler.gewoneSprites = caek;
+    this.speler.superSprites = super_;
+    this.scene.add(this.speler.groep);
+
+    this.cupcaek = new Cupcaek(null, { poppetje: new SpritePoppetje(cup) });
+    this.scene.add(this.cupcaek.groep);
+  }
+
+  /** De oude 3D-weg. Blijft staan zodat de keuze omkeerbaar is. */
+  async #laadModellen() {
+    const [model, cupcaekModel, superModel] = await Promise.all([
+      laadCaek('./assets/caek.glb'),
+      laadCupcaek('./assets/cupcaek.glb'),
+      laadKarakter('./assets/supercaek.glb', NATUURKUNDE.spelerHoogte * SUPERCAEK.hoogteFactor)
+        .catch((fout) => { console.warn('SuperCaek-model niet geladen:', fout.message); return null; }),
+    ]);
+
+    this.speler = new Caek(model, this.level, this.geluid);
+    this.speler.zetSuperModel(superModel);
+    this.scene.add(this.speler.groep);
+
+    this.cupcaek = new Cupcaek(cupcaekModel);
+    this.scene.add(this.cupcaek.groep);
   }
 
   /* ------------------------------------------------------------ *

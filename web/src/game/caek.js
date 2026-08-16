@@ -134,28 +134,40 @@ export class Caek {
    * @param {{wortel: THREE.Object3D, skin: THREE.SkinnedMesh, clips: object}} model
    * @param {import('../world/level.js').Level} level
    */
-  constructor(model, level, geluid) {
+  /**
+   * @param {object|null} model  een GLB-model, of null als er een sprite is
+   * @param {object} [opties]    `{ poppetje }` -- een SpritePoppetje
+   */
+  constructor(model, level, geluid, { poppetje = null } = {}) {
     this.level = level;
     this.geluid = geluid;
 
     this.groep = new THREE.Group();       // wereldpositie (voeten op y)
     this.draaier = new THREE.Group();     // kijkrichting
-    this.draaier.add(model.wortel);
     this.groep.add(this.draaier);
 
+    this.poppetje = poppetje;
     this.model = model;
-    this.mixer = new THREE.AnimationMixer(model.wortel);
     this.acties = {};
-    for (const [naam, clip] of Object.entries(model.clips)) {
-      const actie = this.mixer.clipAction(clip);
-      this.acties[naam] = actie;
+
+    if (poppetje) {
+      // Getekende sprite: geen skelet, geen mixer. Kijkrichting gaat via
+      // spiegelen en niet via draaien -- een tekening die je een kwartslag
+      // draait is een lijn.
+      this.draaier.add(poppetje.groep);
+    } else {
+      this.draaier.add(model.wortel);
+      this.mixer = new THREE.AnimationMixer(model.wortel);
+      for (const [naam, clip] of Object.entries(model.clips)) {
+        this.acties[naam] = this.mixer.clipAction(clip);
+      }
+      if (this.acties.springen) {
+        this.acties.springen.loop = THREE.LoopOnce;
+        this.acties.springen.clampWhenFinished = true;
+      }
+      this.huidigeActie = null;
+      this.speel('idle');
     }
-    if (this.acties.springen) {
-      this.acties.springen.loop = THREE.LoopOnce;
-      this.acties.springen.clampWhenFinished = true;
-    }
-    this.huidigeActie = null;
-    this.speel('idle');
 
     this.positie = new THREE.Vector3(2, 1, 0);
     this.snelheid = new THREE.Vector3();
@@ -216,6 +228,13 @@ export class Caek {
   }
 
   #maakCape() {
+    // Bij een getekende sprite zit de cape in de tekening; hier hoeft niets.
+    if (this.poppetje) {
+      this.cape = new THREE.Object3D();
+      this.origineleMaterialen = new Map();
+      this.superMaterialen = new Map();
+      return;
+    }
     const geo = new THREE.PlaneGeometry(1.5, 1.9, 6, 8);
     const mat = new THREE.MeshLambertMaterial({
       color: PALET.rood, emissive: new THREE.Color(PALET.rood).multiplyScalar(0.4),
@@ -244,6 +263,7 @@ export class Caek {
   }
 
   speel(naam, vervaging = 0.18) {
+    if (this.poppetje) { this.poppetje.speel(naam); return; }
     const actie = this.acties[naam];
     if (!actie || this.huidigeActie === actie) return;
     actie.reset();
@@ -279,6 +299,10 @@ export class Caek {
     this.superActief = true;
     this.superTijd = duur;
     this.cape.visible = true;
+    if (this.poppetje && this.superSprites) {
+      this.poppetje.wisselSprites(this.superSprites);
+      return;
+    }
     if (this.superModel) {
       // het echte model: Caek gaat uit, SuperCaek gaat aan
       this.model.wortel.visible = false;
@@ -293,6 +317,10 @@ export class Caek {
     this.superActief = false;
     this.superTijd = 0;
     this.cape.visible = false;
+    if (this.poppetje && this.gewoneSprites) {
+      this.poppetje.wisselSprites(this.gewoneSprites);
+      return;
+    }
     if (this.superModel) {
       this.model.wortel.visible = true;
       this.superModel.wortel.visible = false;
@@ -345,10 +373,15 @@ export class Caek {
     this.#animeer();
 
     // vloeiend naar de kijkrichting draaien
-    this.draaier.rotation.y += (this.doelDraai - this.draaier.rotation.y) * Math.min(1, dt * 12);
+    if (!this.poppetje) {
+      this.draaier.rotation.y += (this.doelDraai - this.draaier.rotation.y) * Math.min(1, dt * 12);
+    }
 
     if (this.superActief) {
       this.superTijd -= dt;
+      if (this.superTijd <= 0) this.stopSuper();
+    }
+    if (this.superActief && this.cape.geometry) {
       const t = this.klok * 9;
       const pos = this.cape.geometry.attributes.position;
       for (let i = 0; i < pos.count; i++) {
@@ -356,11 +389,19 @@ export class Caek {
         pos.setZ(i, Math.sin(t + y * 3.2) * 0.22 * (0.9 - y * 0.4) - Math.abs(this.snelheid.x) * 0.03);
       }
       pos.needsUpdate = true;
-      if (this.superTijd <= 0) this.stopSuper();
     }
 
-    this.mixer.update(dt);
-    this.#synchroniseerSuper(dt);
+    if (this.poppetje) {
+      this.poppetje.update(dt, {
+        snelheidX: this.snelheid.x,
+        snelheidY: this.snelheid.y,
+        opGrond: this.opGrond,
+        kijkt: this.kijkt,
+      });
+    } else {
+      this.mixer.update(dt);
+      this.#synchroniseerSuper(dt);
+    }
     this.groep.position.copy(this.positie);
   }
 
@@ -390,7 +431,10 @@ export class Caek {
         if (this.positie.x + hb <= vloer.x0 || this.positie.x - hb >= vloer.x1) continue;
         if (vorigeY >= vloer.y - 0.02 && this.positie.y <= vloer.y) {
           this.positie.y = vloer.y;
-          if (this.snelheid.y < -6) this.geluid?.land();
+          if (this.snelheid.y < -6) {
+            this.geluid?.land();
+            this.poppetje?.stuiter(0.78);
+          }
           this.snelheid.y = 0;
           this.opGrond = true;
           break;
@@ -400,6 +444,8 @@ export class Caek {
   }
 
   #animeer() {
+    // De sprite kiest zijn eigen animatie uit snelheid en grondcontact.
+    if (this.poppetje) return;
     if (!this.opGrond) {
       this.speel('springen', 0.1);
       return;

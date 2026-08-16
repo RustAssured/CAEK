@@ -125,14 +125,20 @@ function maakPlaceholder() {
 /* ------------------------------------------------------------------ */
 
 export class Cupcaek {
-  /** @param {object|null} model resultaat van laadCupcaek(), of null */
-  constructor(model = null) {
+  /**
+   * @param {object|null} model  resultaat van laadCupcaek(), of null
+   * @param {object} [opties]    `{ poppetje }` -- een SpritePoppetje
+   */
+  constructor(model = null, { poppetje = null } = {}) {
     this.groep = new THREE.Group();
     this.draaier = new THREE.Group();
     this.groep.add(this.draaier);
 
+    this.poppetje = poppetje;
     this.model = model;
-    if (model) {
+    if (poppetje) {
+      this.draaier.add(poppetje.groep);
+    } else if (model) {
       this.draaier.add(model.wortel);
       this.mixer = new THREE.AnimationMixer(model.wortel);
       this.acties = {};
@@ -156,7 +162,37 @@ export class Cupcaek {
     this.stemming = 'blij';
   }
 
+  /**
+   * Zusje als getekende sprite.
+   *
+   * Ze volgt dezelfde logica als de 3D-versie -- meelopen, blokkeren, naar de
+   * speler kijken -- maar spiegelt in plaats van te draaien.
+   */
+  #updateSprite(dt, speler) {
+    const doel = this.blokkeert !== null ? this.blokkeert : speler.x + this.volgAfstand * speler.kijkt;
+    const vorige = this.positie.x;
+    this.positie.x += (doel - this.positie.x) * Math.min(1, dt * 3.2);
+    this.snelheidX = (this.positie.x - vorige) / Math.max(dt, 1e-4);
+
+    if (speler.opGrond) this.vloerY = speler.y;
+    const doelY = this.vloerY ?? 0;
+    this.positie.y += (doelY - this.positie.y) * Math.min(1, dt * 4.5);
+
+    const kijkt = Math.abs(this.snelheidX) > 0.6
+      ? Math.sign(this.snelheidX)
+      : Math.sign(speler.x - this.positie.x || 1);
+
+    this.poppetje.update(dt, {
+      snelheidX: this.snelheidX,
+      snelheidY: 0,
+      opGrond: true,
+      kijkt,
+    });
+    this.groep.position.set(this.positie.x, this.positie.y, this.positie.z);
+  }
+
   speel(naam, vervaging = 0.2) {
+    if (this.poppetje) { this.poppetje.speel(naam); return; }
     const actie = this.acties?.[naam];
     if (!actie || this.huidigeActie === actie) return;
     actie.reset().setEffectiveWeight(1).fadeIn(vervaging).play();
@@ -191,6 +227,7 @@ export class Cupcaek {
 
   update(dt, speler) {
     this.klok += dt;
+    if (this.poppetje) { this.#updateSprite(dt, speler); return; }
 
     const doel = this.blokkeert !== null ? this.blokkeert : speler.x + this.volgAfstand * speler.kijkt;
     const vorige = this.positie.x;
@@ -224,6 +261,7 @@ export class Cupcaek {
     }
 
     // --- terugval: de placeholder wordt met de hand geanimeerd ---
+    if (!this.placeholder) { this.groep.position.set(this.positie.x, this.positie.y, this.positie.z); return; }
     const hup = rent ? Math.abs(Math.sin(this.klok * 11)) * 0.19 : Math.sin(this.klok * 2.1) * 0.045;
     this.groep.position.set(this.positie.x, this.positie.y + hup, this.positie.z);
     this.groep.rotation.z = -this.snelheidX * 0.02;

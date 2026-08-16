@@ -176,15 +176,34 @@ function maakPlaatshouder(soort, frames = 3) {
  * Ontbreekt een animatie, dan wordt er een bestaande voor gebruikt: liever
  * Caek die staat te lopen tijdens een sprong dan een gat in het beeld.
  */
+let manifestBelofte = null;
+
+/** Het manifest dat tools/sprites.py schrijft. Eén keer ophalen, gedeeld. */
+function laadManifest() {
+  manifestBelofte ??= fetch(`${SPRITE.map}manifest.json`, { cache: 'no-cache' })
+    .then((a) => (a.ok ? a.json() : {}))
+    .catch(() => ({}));
+  return manifestBelofte;
+}
+
+/**
+ * Laadt alles wat er is en verzint de rest.
+ *
+ * De bestandsnamen komen uit het manifest en niet uit config.js: het aantal
+ * frames zit in de naam, en dat verandert zodra er een rij opnieuw getekend
+ * wordt. Zo hoeft er nooit een naam met de hand bijgewerkt te worden.
+ */
 export async function laadSprites(soort) {
   const opzet = SPRITE.karakters[soort] || {};
+  const manifest = await laadManifest();
+  const animaties = manifest[soort] || {};
   const bladen = {};
 
-  await Promise.all(Object.entries(opzet.animaties || {}).map(async ([naam, pad]) => {
+  await Promise.all(Object.entries(animaties).map(async ([naam, info]) => {
     try {
-      bladen[naam] = await laadBlad(`${SPRITE.map}${pad}`);
-    } catch {
-      /* stilzwijgend: de terugval hieronder vangt het op */
+      bladen[naam] = await laadBlad(`${SPRITE.map}${info.bestand}`, info.frames);
+    } catch (fout) {
+      console.warn(`CAEK: ${soort}/${naam} niet geladen:`, fout.message);
     }
   }));
 
@@ -201,7 +220,11 @@ export async function laadSprites(soort) {
  * ------------------------------------------------------------------ */
 
 /** Snelheid per animatie in frames per seconde. */
-const TEMPO = { idle: 4, lopen: 10, rennen: 14, springen: 8 };
+const TEMPO = { idle: 5, lopen: 11, rennen: 15, springen: 9, juichen: 11 };
+
+/* Animaties die één keer aflopen en op hun laatste frame blijven staan. Een
+ * sprong die loopt is een figuur die blijft stuiteren. */
+const EENMALIG = new Set(['springen', 'juichen']);
 
 export class SpritePoppetje {
   /** @param {{soort: string, bladen: object, hoogte: number}} sprites */
@@ -287,7 +310,10 @@ export class SpritePoppetje {
       if (this.huidigNaam === 'lopen' || this.huidigNaam === 'rennen') {
         fps *= THREE.MathUtils.clamp(snel / 5.0, 0.55, 1.9);
       }
-      this.frame = Math.floor(this.klok * fps) % blad.frames;
+      const stap = Math.floor(this.klok * fps);
+      this.frame = EENMALIG.has(this.huidigNaam)
+        ? Math.min(stap, blad.frames - 1)
+        : stap % blad.frames;
       blad.textuur.offset.x = this.frame / blad.frames;
     }
 

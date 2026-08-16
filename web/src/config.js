@@ -43,6 +43,11 @@ export const SUPERCAEK = {
 /* Schakelaars voor grappen die misschien niet blijken te werken. Uit zetten
  * kost één regel; iets uit de code halen kost een middag. */
 export const SCHAKELS = {
+  // Getekende sprites in plaats van de 3D-modellen. De hele renderketen is
+  // gebouwd voor dikke simpele vormen met harde kleurvlakken, en dat is
+  // precies wat een tekening is. Op false vallen we terug op de GLB's; die
+  // code blijft staan zodat de keuze omkeerbaar is.
+  sprites: true,
   wachttunnel: true,       // sprint 4: de deur die op zichzelf opengaat
   cadans: true,            // teams die net iets uit de maat draaien
   wooJungFM: true,         // het gedeukte radiootje bij de review

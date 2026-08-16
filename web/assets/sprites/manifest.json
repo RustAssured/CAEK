@@ -1,9 +1,9 @@
 {
   "caek": {
     "lopen": {
-      "bestand": "caek_lopen_10.webp",
-      "frames": 10,
-      "breedte": 213,
+      "bestand": "caek_lopen_5.webp",
+      "frames": 5,
+      "breedte": 243,
       "hoogte": 288
     },
     "idle": {
