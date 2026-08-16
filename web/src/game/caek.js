@@ -62,15 +62,63 @@ export async function laadKarakter(url, doelHoogte = DOEL_HOOGTE) {
 
   const gemetenHoogte = Math.max(geoBox.max.y - geoBox.min.y, botBox.max.y - botBox.min.y);
   const schaal = gemetenHoogte > 1e-4 ? doelHoogte / gemetenHoogte : 1;
-  const voetOffset = Math.min(geoBox.min.y, botBox.min.y);
-
-  wortel.scale.setScalar(schaal);
-  wortel.position.y = -voetOffset * schaal;
 
   const clips = {};
   for (const clip of gltf.animations) clips[clip.name] = clip;
 
-  return { wortel, skin, clips, schaal, gemetenHoogte };
+  // De bindpose zegt waar de voeten *zouden* staan, niet waar ze in de
+  // animatie staan. Bij Caek is dat hetzelfde, bij Cupcaek scheelt het ruim
+  // anderhalve meter: haar clips dragen een roottranslatie mee. Dus meten we
+  // de zakking van de rustclip erbij, anders hangt ze onder de vloer.
+  const zakking = meetZakking(wortel, skin, clips, botBox.min.y);
+  const voetOffset = Math.min(geoBox.min.y, botBox.min.y) + zakking;
+
+  wortel.scale.setScalar(schaal);
+  wortel.position.y = -voetOffset * schaal;
+
+  return { wortel, skin, clips, schaal, gemetenHoogte, zakking };
+}
+
+/**
+ * Hoeveel het laagste bot in de rustclip onder de bindpose zakt.
+ *
+ * We nemen het minimum over een hele cyclus: dat is het moment waarop de voet
+ * de grond raakt, en precies dáár wil je de vloer hebben. De sprongclip doet
+ * niet mee -- die verlaat de grond met opzet.
+ */
+function meetZakking(wortel, skin, clips, bindBodem) {
+  const clip = clips.idle || clips.bind || clips.lopen || clips.rennen;
+  if (!clip || clip.duration <= 0) return 0;
+
+  const botten = skin.skeleton.bones;
+  const bewaard = botten.map((b) => ({
+    p: b.position.clone(), q: b.quaternion.clone(), s: b.scale.clone(),
+  }));
+
+  const mixer = new THREE.AnimationMixer(wortel);
+  const actie = mixer.clipAction(clip);
+  actie.play();
+
+  const stappen = 24;
+  const stap = clip.duration / stappen;
+  const p = new THREE.Vector3();
+  let bodem = Infinity;
+  for (let i = 0; i <= stappen; i++) {
+    mixer.setTime(i * stap);
+    wortel.updateMatrixWorld(true);
+    for (const bot of botten) bodem = Math.min(bodem, p.setFromMatrixPosition(bot.matrixWorld).y);
+  }
+
+  actie.stop();
+  mixer.uncacheRoot(wortel);
+  botten.forEach((b, i) => {
+    b.position.copy(bewaard[i].p);
+    b.quaternion.copy(bewaard[i].q);
+    b.scale.copy(bewaard[i].s);
+  });
+  wortel.updateMatrixWorld(true);
+
+  return Number.isFinite(bodem) ? bodem - bindBodem : 0;
 }
 
 /** Caek zelf, op spelerhoogte. */

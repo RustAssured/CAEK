@@ -438,10 +438,19 @@ async function begin() {
   }
 
   window.LAB = {
-    schilder, scene, camera, STIJL, KWALITEIT, staat,
+    THREE, schilder, scene, camera, STIJL, KWALITEIT, staat,
     pasStijlToe, zetCamera, uitsnedes: Object.keys(UITSNEDES),
+    speler, cupcaek,
     // één frame op commando, los van de animatielus
     renderNu(tijd = 12.0) { schilder.render(scene, camera, tijd); },
+    /** Stap de karakters met vaste dt door; headless loopt de rAF-lus te traag
+     *  om ergens op uit te komen, en dan meet je een halve crossfade. */
+    stap(aantal = 240, dt = 1 / 60) {
+      for (let i = 0; i < aantal; i++) {
+        if (speler) speler.mixer.update(dt);
+        cupcaek.update(dt, { x: 1.4, y: 0, kijkt: 1, opGrond: true });
+      }
+    },
   };
 }
 
