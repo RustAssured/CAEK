@@ -1538,6 +1538,45 @@ export function cipres(hoogte = 9) {
 }
 
 export function lantaarn(hoogte = 4.5) {
+  if (MODEL.lantaarn) return gemodelleerdeLantaarn(hoogte);
+  return gebouwdeLantaarn(hoogte);
+}
+
+/**
+ * De gietijzeren lantaarn, met een taartje aan de arm.
+ *
+ * Het licht komt uit drie dingen tegelijk, en dat is geen stapeling maar
+ * arbeidsdeling: de textuur geeft het glas zijn gloed, een additieve vlek
+ * geeft de halo eromheen die de bloeipass oppikt, en een puntlicht laat de
+ * straat eronder echt oplichten. Alleen dat laatste kost iets, dus het bereik
+ * is krap gehouden.
+ */
+function gemodelleerdeLantaarn(hoogte) {
+  const groep = new THREE.Group();
+  const m = MODEL.lantaarn;
+  const schaal = hoogte / m.hoogte;
+  const paal = m.wortel.clone();
+  paal.scale.multiplyScalar(schaal);
+  groep.add(paal);
+
+  // de lampkop zit bovenin; uitgemeten op het model
+  const kopY = hoogte * 0.86;
+
+  const halo = vlak(hoogte * 0.5, hoogte * 0.5, meng(new THREE.MeshBasicMaterial({
+    map: vlekTextuur(), color: PALET.goudLicht, toneMapped: false,
+  })));
+  halo.material.opacity = 0.55;
+  halo.position.set(0, kopY, m.diepte * schaal * 0.5);
+  halo.renderOrder = 3;
+  groep.add(halo);
+
+  const licht = new THREE.PointLight(0xffd873, 9, 14, 2);
+  licht.position.set(0, kopY, 0.4);
+  groep.add(licht);
+  return groep;
+}
+
+function gebouwdeLantaarn(hoogte) {
   const groep = new THREE.Group();
   const paal = cilinder(0.14, hoogte, PALET.blauwDiep);
   paal.position.y = hoogte / 2;

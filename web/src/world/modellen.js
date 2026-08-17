@@ -37,6 +37,9 @@ const MODELLEN = {
   // naast elkaar als er passen in plaats van er één uit te rekken, want dan
   // zouden de ijzeren banden meerekken en dat zie je meteen.
   krat: { bestand: 'springkrat.glb', hoogte: 1.25, masker: 0.10 },
+  // Staat er vijftien keer langs de weg en draagt de hele nachtsfeer, zeker
+  // sinds de bloei erin zit.
+  lantaarn: { bestand: 'lantaarn.glb', hoogte: 4.8, masker: 0.10 },
 };
 
 const lader = new GLTFLoader();
