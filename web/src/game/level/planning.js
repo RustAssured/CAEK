@@ -30,7 +30,7 @@ export function bouwPlanning(level, spel) {
   level.tik((dt, speler, sp) => {
     oven.userData.gloeien(PALET.oranje, 1.4 + Math.sin(sp.klok * 3) * 0.5);
   });
-  level.plaats(props.bord(['PI PLANNING'], { breedte: 5, hoogte: 1.8, grootte: 56 }), x0 + 2, 0, 2.4);
+  level.plaats(props.bord(['PI PLANNING'], { breedte: 4.2, hoogte: 1.8, grootte: 56 }), x0 + 2, 0, -4.2);
 
   /* ---------------- het Doelenwiel, groot en compleet ---------------- */
 
@@ -76,7 +76,7 @@ export function bouwPlanning(level, spel) {
   /* ---------------- risico's ---------------- */
 
   const risicoBord = props.bord(['RISICO\'S', 'benoemd, niet weggepoetst'], { breedte: 6.0, hoogte: 2.2, grootte: 40 });
-  level.plaats(risicoBord, x0 + 27, 0, 2.2);
+  level.plaats(risicoBord, x0 + 27, 0, -4.2);
   const risicos = ['te weinig tijd', 'twee keer hetzelfde', 'niemand beschikbaar', 'het staat niet in de keten'];
   risicos.forEach((tekst, i) => {
     const kaart = props.doos(2.0, 1.2, 0.1, [PALET.rood, PALET.oranje, PALET.goud, PALET.roze][i], { emissief: 0.4 });
@@ -120,7 +120,7 @@ export function bouwPlanning(level, spel) {
   /* ---------------- de business value die de teams beloven ---------------- */
 
   const valueBord = props.bord(['BUSINESS VALUE', `${PI.beloofdeValue} punten beloofd`], { breedte: 7.0, hoogte: 2.4, grootte: 40 });
-  level.plaats(valueBord, x0 + 45, 0, 2.4);
+  level.plaats(valueBord, x0 + 45, 0, -4.2);
   level.interactie({
     x: x0 + 45, y: 1.6, straal: 3.2,
     label: 'bekijk de beloofde business value',

@@ -19,6 +19,8 @@ const lader = new THREE.TextureLoader();
  * de blokplaat in beide richtingen, en losse objecten helemaal niet. */
 const HERHALING = {
   vloer: [THREE.RepeatWrapping, THREE.ClampToEdgeWrapping],
+  vloer_boven: [THREE.RepeatWrapping, THREE.ClampToEdgeWrapping],
+  vloer_rand: [THREE.RepeatWrapping, THREE.ClampToEdgeWrapping],
   springblok: [THREE.RepeatWrapping, THREE.ClampToEdgeWrapping],
   blok: [THREE.RepeatWrapping, THREE.RepeatWrapping],
   hout: [THREE.RepeatWrapping, THREE.RepeatWrapping],

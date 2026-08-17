@@ -298,10 +298,15 @@ float lineaireDiepte(float d, vec2 cam) {
   return (2.0 * cam.x * cam.y) / (cam.y + cam.x - z * (cam.y - cam.x));
 }
 
-float verfSterkte(sampler2D diepteKaart, vec2 uv, vec2 cam, vec3 masker, float alfa) {
+/* masker = (nabij, ver, bodem, globaal). Die vierde is de hoofdkraan: op nul
+   ligt er nergens verf, wat de gewone stand is sinds de wereld geschilderd
+   binnenkomt. Hij loopt mee met SuperCaek, want daar is de filter geen laagje
+   stijl maar het hele effect. */
+float verfSterkte(sampler2D diepteKaart, vec2 uv, vec2 cam, vec4 masker, float alfa) {
+  if (masker.w < 0.002) return 0.0;
   float d = lineaireDiepte(texture2D(diepteKaart, uv).x, cam);
   float ver = smoothstep(masker.x, masker.y, d);
-  return clamp(mix(masker.z, 1.0, ver) * alfa, 0.0, 1.0);
+  return clamp(mix(masker.z, 1.0, ver) * alfa * masker.w, 0.0, 1.0);
 }
 `;
 
@@ -313,7 +318,7 @@ uniform sampler2D uTensor;
 uniform sampler2D uDiepte;
 uniform vec2 uPixel;
 uniform vec2 uCam;         // near, far
-uniform vec3 uMasker;      // nabij, ver, bodem
+uniform vec4 uMasker;      // nabij, ver, bodem, globaal
 uniform float uStraal;
 uniform float uAlfa;       // excentriciteit
 uniform float uScherpte;   // q
@@ -434,7 +439,7 @@ uniform sampler2D uKleur;     // het geschilderde beeld (Kuwahara)
 uniform sampler2D uTensor;    // het gladde flowveld
 uniform sampler2D uDiepte;    // dieptemasker: waar mag er verf liggen
 uniform vec2 uCam;            // near, far
-uniform vec3 uMasker;         // nabij, ver, bodem
+uniform vec4 uMasker;         // nabij, ver, bodem, globaal
 uniform vec2 uResolutie;
 uniform vec2 uVerschuiving;   // camerapan, zodat streken aan de wereld plakken
 uniform float uLengte;
@@ -638,7 +643,7 @@ uniform float uSuper;
 uniform float uFlits;      // witte impactflits bij de transformatie
 uniform sampler2D uDiepte;
 uniform vec2 uCam;         // near, far
-uniform vec3 uMasker;      // nabij, ver, bodem
+uniform vec4 uMasker;      // nabij, ver, bodem, globaal
 uniform sampler2D uBloei;
 uniform float uBloeiSterkte;
 out vec4 fragKleur;
@@ -810,7 +815,10 @@ void main() {
   vec2 v = (vUv - 0.5) * vec2(1.0, 0.92);
   float vig = 1.0 - uVignet * dot(v, v) * 1.9;
   kleur *= clamp(vig, 0.0, 1.0);
-  kleur += (hash12(floor(vUv / uPixel) + floor(uTijd * 12.0)) - 0.5) * 0.016;
+  // Filmkorrel hoort bij het doek, niet bij het beeld. Staat de verf uit, dan
+  // is dit geen textuur maar ruis over strakke sprites -- dus loopt hij mee.
+  kleur += (hash12(floor(vUv / uPixel) + floor(uTijd * 12.0)) - 0.5)
+         * mix(0.004, 0.016, uMasker.w);
   kleur = mix(kleur, vec3(1.0), clamp(uFlits, 0.0, 1.0));
 
   // ---- lineair -> sRGB -----------------------------------------

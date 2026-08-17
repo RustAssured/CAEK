@@ -92,7 +92,9 @@ export async function zetAchtergrond(scene, level) {
 
     const vlak = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), materiaal);
     vlak.frustumCulled = false;
-    vlak.renderOrder = -10 + index;      // ver eerst, dichtbij als laatste
+    // ver eerst, dichtbij als laatste -- en de voorgrondstrook helemaal
+    // bovenop, want die hoort óók over de karakters heen te lopen
+    vlak.renderOrder = opzet.voor ? 20 : -10 + index;
     scene.add(vlak);
 
     lagen.push({ ...opzet, vlak, textuur, verhouding: info.hoogte / info.breedte });
@@ -101,6 +103,7 @@ export async function zetAchtergrond(scene, level) {
   if (!lagen.length) return false;
 
   // Elk frame: het vlak voor de camera houden en de textuur laten meeschuiven.
+  const kijk = new THREE.Vector3();
   level.tik((dt, speler, spel) => {
     const camera = spel.camera;
     const halveHoek = (camera.fov * Math.PI) / 360;
@@ -118,7 +121,24 @@ export async function zetAchtergrond(scene, level) {
       const tegel = tegelHoogte / laag.verhouding;
 
       laag.vlak.scale.set(breedte, tegelHoogte, 1);
-      laag.vlak.position.set(camera.position.x, laag.bodem + tegelHoogte / 2, laag.z);
+
+      /* Achtergrondlagen hangen op een vaste wereldhoogte: die staan ver weg,
+       * daar is het beeldvlak groot en schuift een halve eenheid nauwelijks.
+       *
+       * De voorgrondstrook staat vlak voor de lens, en dáár is het beeldvlak
+       * juist klein -- een vaste hoogte zou hem afhankelijk van de schermmaat
+       * of buiten beeld of dwars door de speler heen zetten. Dus wordt hij
+       * uitgelijnd op de onderrand van het beeld op zijn eigen diepte. */
+      if (laag.voor) {
+        camera.getWorldDirection(kijk);
+        // waar de kijkas dit vlak snijdt
+        const stap = afstand / Math.max(1e-3, Math.abs(kijk.z));
+        const midden = camera.position.y + kijk.y * stap;
+        const onder = midden - beeldHoogte / 2;
+        laag.vlak.position.set(camera.position.x, onder + tegelHoogte * (laag.zit ?? 0.4), laag.z);
+      } else {
+        laag.vlak.position.set(camera.position.x, laag.bodem + tegelHoogte / 2, laag.z);
+      }
 
       laag.textuur.repeat.x = breedte / tegel;
       // De camera staat in het midden van het vlak, dus de linkerrand ligt een

@@ -27,7 +27,7 @@ export function bouwSprint1(level, spel) {
   level.platform(x0 + 34, 2.4, 3.4);
   level.grond(x0 + 68, x0 + s.lengte + 2, 0, PALET.steen);
 
-  level.plaats(props.bord(['SPRINTDOEL', s.doel], { breedte: 5.6, hoogte: 2.2, grootte: 40 }), x0 + 3, 0, 2.4);
+  level.plaats(props.bord(['SPRINTDOEL', s.doel], { breedte: 4.8, hoogte: 2.2, grootte: 40 }), x0 + 3, 0, -4.2);
 
   // Scope Creep wordt hier wakker
   level.zone(x0 + 4, x0 + 7, (sp) => {
@@ -76,8 +76,8 @@ export function bouwSprint1(level, spel) {
   /* ---------------- het sorteerbord ---------------- */
 
   level.plaats(
-    props.bord(['WAT DRAAGT BIJ', 'AAN HET SPRINTDOEL?'], { breedte: 5.4, hoogte: 2.2, grootte: 44 }),
-    x0 + 52, 0, 1.6,
+    props.bord(['WAT DRAAGT BIJ', 'AAN HET SPRINTDOEL?'], { breedte: 4.8, hoogte: 2.2, grootte: 44 }),
+    x0 + 52, 0, -3.6,
   );
 
   level.interactie({
@@ -196,7 +196,7 @@ export function bouwSprint2(level, spel) {
   level.grond(x0, x0 + 22, 0, PALET.blauw);
   level.grond(x0 + 40, x0 + s.lengte + 2, 0, PALET.blauw);
 
-  level.plaats(props.bord(['SPRINTDOEL', s.doel], { breedte: 5.6, hoogte: 2.2, grootte: 40 }), x0 + 2, 0, 2.4);
+  level.plaats(props.bord(['SPRINTDOEL', s.doel], { breedte: 4.8, hoogte: 2.2, grootte: 40 }), x0 + 2, 0, -4.2);
 
   const knoop = props.pretzel(3.4);
   level.plaats(knoop, x0 + 31, 9.0, -5);
@@ -292,7 +292,7 @@ export function bouwSprint3(level, spel) {
   const x0 = s.x;
   level.grond(x0 - 2, x0 + s.lengte + 2, 0, PALET.blauw);
 
-  level.plaats(props.bord(['SPRINTDOEL', s.doel], { breedte: 5.6, hoogte: 2.2, grootte: 40 }), x0 + 2, 0, 2.4);
+  level.plaats(props.bord(['SPRINTDOEL', s.doel], { breedte: 4.8, hoogte: 2.2, grootte: 40 }), x0 + 2, 0, -4.2);
 
   technicalDebt(level, x0 + 6);
 
@@ -462,7 +462,7 @@ export function bouwSprint4(level, spel) {
   const x0 = s.x;
   level.grond(x0 - 2, x0 + s.lengte + 2, 0, PALET.steen);
 
-  level.plaats(props.bord(['SPRINTDOEL', s.doel], { breedte: 5.6, hoogte: 2.2, grootte: 40 }), x0 + 2, 0, 2.4);
+  level.plaats(props.bord(['SPRINTDOEL', s.doel], { breedte: 4.8, hoogte: 2.2, grootte: 40 }), x0 + 2, 0, -4.2);
 
   /* ---------------- de demo ---------------- */
 
@@ -549,7 +549,7 @@ export function bouwSprint4(level, spel) {
 
   /* ---------------- de volgende PI komt al in zicht ---------------- */
 
-  level.plaats(props.bord(['PRIORITERINGSSESSIE', '→ volgende PI'], { breedte: 6.4, hoogte: 2.2, grootte: 38 }), x0 + 54, 0, 2.2);
+  level.plaats(props.bord(['PRIORITERINGSSESSIE', '→ volgende PI'], { breedte: 5.4, hoogte: 2.2, grootte: 38 }), x0 + 54, 0, -4.2);
   level.platform(x0 + 51, 2.6, 3.2);
   level.platform(x0 + 57, 3.4, 3.2);
   level.zone(x0 + 53, x0 + 55, (sp) => {

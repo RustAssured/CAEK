@@ -103,7 +103,10 @@ export class Streken {
         uTensor: { value: null },
         uDiepte: { value: null },
         uCam: { value: new THREE.Vector2(0.5, 300) },
-        uMasker: { value: new THREE.Vector3(12.0, 42.0, 0.45) },
+        // (nabij, ver, bodem, globaal) -- dezelfde waardes als DIEPTE in
+        // composer.js, die ze via zetDiepte()/zetVerf() ook bijwerkt. Hier
+        // letterlijk en niet geïmporteerd, want dat zou een cirkel maken.
+        uMasker: { value: new THREE.Vector4(17.0, 40.0, 0.05, 0.0) },
         uResolutie: { value: new THREE.Vector2(1, 1) },
         uVerschuiving: { value: new THREE.Vector2() },
         uLengte: { value: 1 },
@@ -254,6 +257,19 @@ export class Streken {
     this.diepteKaart = diepteKaart;
     this.camNabij = nabij;
     this.camVer = ver;
+  }
+
+  /** De hoofdkraan van de verf; zie DIEPTE in composer.js. */
+  zetVerf(sterkte) {
+    for (const laag of this.lagen || []) laag.materiaal.uniforms.uMasker.value.w = sterkte;
+  }
+
+  /** De dieptegrenzen gelijkhouden met de rest van de keten. */
+  zetDiepte({ nabij, ver, bodem }) {
+    for (const laag of this.lagen || []) {
+      const m = laag.materiaal.uniforms.uMasker.value;
+      m.set(nabij, ver, bodem, m.w);
+    }
   }
 
   /** Hoeveel van de gestrooide halen daadwerkelijk getekend worden (0..1). */

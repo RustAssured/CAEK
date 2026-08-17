@@ -41,8 +41,20 @@ export const KWALITEIT = {
 export const DIEPTE = {
   nabij: 17.0,   // hier begint het masker; alles ervoor krijgt `bodem`
   ver: 40.0,     // hier is de filter op volle sterkte
-  bodem: 0.05,   // vrijwel niets op het spelvlak; net genoeg dat de overgang
-                 // naar het geschilderde decor erachter niet als een naad leest
+  bodem: 0.05,   // vrijwel niets op het spelvlak
+
+  /* De hoofdkraan. `basis` is hoeveel verf er in het gewone spel over de
+   * wereld gaat, en dat is nul: alles wat je ziet is al geschilderd, en de
+   * filter deed er niets meer bij behalve het uitsmeren. Hij scheelde ook nog
+   * eens zichtbaar van sterkte als de automatische kwaliteitsschakelaar terug
+   * moest -- dan zag je de stijl midden in het spel veranderen.
+   *
+   * `super` is waar de keten wél voor blijft staan. In SuperCaek-modus is de
+   * filter niet een laagje sfeer maar het effect zelf: de Kuwahara maakt de
+   * vlakken waar de comicmodus zijn inktlijnen en halftonen op legt. Dus loopt
+   * de kraan mee met dezelfde crossfade. */
+  basis: 0.0,
+  super: 1.0,
 };
 
 /* Bloei — wat licht geeft, geeft ook licht áf.
@@ -188,7 +200,7 @@ export class Schilder {
       uScherpte: { value: STIJL.scherpte },
       uDiepte: { value: null },
       uCam: { value: new THREE.Vector2(0.5, 300) },
-      uMasker: { value: new THREE.Vector3(DIEPTE.nabij, DIEPTE.ver, DIEPTE.bodem) },
+      uMasker: { value: new THREE.Vector4(DIEPTE.nabij, DIEPTE.ver, DIEPTE.bodem, DIEPTE.basis) },
     });
 
     this.finale = maakQuad(finaleFragment, {
@@ -209,7 +221,7 @@ export class Schilder {
       uFlits: { value: 0 },
       uDiepte: { value: null },
       uCam: { value: new THREE.Vector2(0.5, 300) },
-      uMasker: { value: new THREE.Vector3(DIEPTE.nabij, DIEPTE.ver, DIEPTE.bodem) },
+      uMasker: { value: new THREE.Vector4(DIEPTE.nabij, DIEPTE.ver, DIEPTE.bodem, DIEPTE.basis) },
       uBloei: { value: null },
       uBloeiSterkte: { value: BLOEI.sterkte },
     });
@@ -227,6 +239,7 @@ export class Schilder {
 
     this.streken = new Streken(renderer, STIJL.streken);
     this.strekenAan = true;
+    this.verfAan = DIEPTE.basis;
     this.verschuiving = new THREE.Vector2();
 
     this.zetKwaliteit(kwaliteit);
@@ -283,11 +296,21 @@ export class Schilder {
     this.tensorPixel = new THREE.Vector2(1 / tb, 1 / th);
   }
 
-  /** @param {number} v 0 = olieverf, 1 = comic */
+  /** @param {number} v 0 = gewoon, 1 = comic */
   zetSuper(v) {
     this.super = v;
     this.lucht.materiaal.uniforms.uSuper.value = v;
     this.finale.materiaal.uniforms.uSuper.value = v;
+    // De verf komt mee op met SuperCaek en gaat er weer mee vanaf.
+    this.zetVerf(DIEPTE.basis + (DIEPTE.super - DIEPTE.basis) * v);
+  }
+
+  /** Hoeveel olieverf er over de wereld gaat. 0 = de keten slaapt. */
+  zetVerf(sterkte) {
+    this.verfAan = Math.max(0, Math.min(1, sterkte));
+    this.kuwahara.materiaal.uniforms.uMasker.value.w = this.verfAan;
+    this.finale.materiaal.uniforms.uMasker.value.w = this.verfAan;
+    this.streken.zetVerf?.(this.verfAan);
   }
 
   zetFlits(v) {
@@ -357,7 +380,10 @@ export class Schilder {
 
     this.#bloei();
 
-    if (this.kwaliteitNaam === 'uit') {
+    // Ligt er geen verf, dan hoeft er ook niets geschilderd te worden: geen
+    // tensor, geen Kuwahara, geen streken. Dat is niet alleen sneller, het is
+    // ook wat je ziet -- de scene gaat rechtstreeks naar de grade.
+    if (this.verfAan < 0.002 || this.kwaliteitNaam === 'uit') {
       this.finale.materiaal.uniforms.uVerf.value = this.rtScene.texture;
       this.finale.materiaal.uniforms.uTensor.value = this.rtT2.texture;
       // zonder verf hebben we alsnog een flowveld nodig voor het comicpad
@@ -392,6 +418,7 @@ export class Schilder {
     if (this.strekenAan) {
       this.#zetVerschuiving(camera);
       this.streken.zetMasker(this.rtScene.depthTexture, camera.near ?? 0.5, camera.far ?? 300);
+      this.streken.zetDiepte?.(DIEPTE);
       this.streken.render(this.rtVerf.texture, this.rtT2.texture, this.verschuiving);
       f.uVerf.value = this.streken.doel.textures[0];
       f.uHoogteKaart.value = this.streken.doel.textures[1];

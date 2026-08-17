@@ -80,7 +80,7 @@ export function bouwReview(level, spel, { nummer, sectieId, taak, zaalBreedte, u
     props.bord([`CLUSTER REVIEW ${nummer}`, laatste ? 'INSPECT & ADAPT' : 'iedereen is er'], {
       breedte: 7.0, hoogte: 2.4, grootte: 40,
     }),
-    x0 + 2, 0, 2.6,
+    x0 + 2, 0, -4.4,
   );
 
   /* ---------------- alle teams, elke keer ---------------- */

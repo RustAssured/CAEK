@@ -144,6 +144,70 @@ the origin in x and y.
 
 ## 2D — wat er nog ontbreekt
 
+### 0. `voorgrond.png` — de voorgrondstrook (nu een noodoplossing)
+
+2048 × 384, transparant. Er hangt nu een laag vóór het spelvlak die sneller
+langs schuift dan de wereld erachter; dat is de goedkoopste diepte die er is.
+Hij is voorlopig uit de onderrand van `dichtbij` gesneden en donker gezet, wat
+werkt maar herhaalt zichtbaar met die laag. Een eigen tekening is beter.
+
+```
+[stijlblok]
+
+2048 x 384 pixels. Transparant as a printable sticker.
+
+A narrow horizontal band of foreground planting seen from very close, as if
+you are standing just behind it. Only the tops of things: clumps of tall grass,
+a few round shrubs, the flared bases of two cast-iron lamp posts, and here and
+there a stray paper bag and a wooden crate corner sticking out of the leaves.
+One small pretzel lies forgotten in the grass, and a cooling rack with two
+buns leans against a shrub — this is the edge of a working bakery street.
+
+Everything is DARK and low in contrast, as if unlit and out of focus: deep
+blue-black and dark teal with only the faintest warm edges. It must read as a
+silhouette, never as detail — it sits in front of the characters.
+
+The shapes occupy the lower 70%; everything above is transparent, with an
+irregular ragged top edge, never a straight line.
+Seamlessly tileable horizontally.
+```
+
+### 0b. `straat2.png` — een tweede straattegel
+
+Zelfde maten en indeling als `straat.png` (2048 × 1024, dekkend, bovenste 58%
+loopvlak, onderste 42% stoeprand, scheidingslijn kaarsrecht op 58% van boven).
+De vloer wordt nu als écht liggend vlak opgebouwd, dus de herhaling in de
+breedte is het enige dat nog opvalt. Twee tegels die het spel afwisselt halen
+dat er grotendeels uit.
+
+```
+[stijlblok]
+
+2048 x 1024 pixels, opaque, no transparency.
+
+A seamless horizontal strip of cobblestone street, drawn as a flat side
+elevation with the ground receding only slightly.
+
+TOP 58% of the canvas: the walking surface. Rows of cobbles running strictly
+horizontally, parallel to the top and bottom edges, getting slightly shorter
+and closer together toward the top. The joints between stones must stay
+VERTICAL and PARALLEL — no lines converging toward a centre point, no vanishing
+point. Worn stones in deep blue and violet with warm gold and amber stones
+scattered irregularly among them. Make this pattern clearly DIFFERENT from a
+previous version: other stone sizes, another rhythm, the gold ones in other
+places, and a drain grate and a scattering of spilled flour worked into the
+paving.
+
+BOTTOM 42%: the vertical cut face of the kerb below the street, in darker
+blue-violet stone. Same painterly treatment, heavier and cooler.
+
+A crisp horizontal line separates the two, at exactly 58% from the top,
+running edge to edge without interruption.
+
+Seamlessly tileable horizontally. Nothing distinctive on either edge.
+```
+
+
 De platen voor ronde 1 tot en met 3 zitten er allemaal in. Wat nu nog zou
 helpen, op volgorde van opbrengst.
 

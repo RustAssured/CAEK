@@ -67,6 +67,11 @@ def snij_magenta(vel, tolerantie=70, zacht=45):
 
 
 def heeft_magenta(vel):
+    # Draagt de plaat al een echt alfakanaal, dan is er niets weg te snijden.
+    # Zonder deze test ging een paarse rookpluim door voor achtergrond en werd
+    # er een gat in de tekening geknipt.
+    if vel.mode in ("RGBA", "LA") and float(np.asarray(vel.convert("RGBA"))[..., 3].min()) < 250:
+        return False
     arr = np.asarray(vel.convert("RGB"), dtype=np.float32)
     magenta = np.minimum(arr[..., 0], arr[..., 2]) - arr[..., 1]
     return float((magenta > 120).mean()) > 0.03
@@ -131,6 +136,9 @@ def main():
     ap.add_argument("--bestand", help="losse plaat verwerken in plaats van de vaste lagen")
     ap.add_argument("--naam", help="uitvoernaam bij --bestand")
     ap.add_argument("--uit", help="uitvoermap (standaard web/assets/achtergrond)")
+    ap.add_argument("--band", help="alleen een horizontale strook gebruiken, als 'van,tot' in fracties vanaf de onderkant (bijv. 0,0.22)")
+    ap.add_argument("--donker", type=float, default=1.0,
+                    help="helderheid vermenigvuldigen; onder 1 maakt er een silhouet van, wat een voorgrondlaag nodig heeft")
     ap.add_argument("--grijs", action="store_true",
                     help="omzetten naar een grijze detailkaart rond middengrijs, zodat hij de kleur van het materiaal moduleert in plaats van vervangt")
     args = ap.parse_args()
@@ -166,6 +174,24 @@ def main():
         else:
             vel = vel.convert("RGBA")
             print("  geen magenta gevonden, plaat blijft dekkend")
+
+        if args.band:
+            van, tot = (float(v) for v in args.band.split(","))
+            h = vel.height
+            # fracties zijn vanaf de ONDERkant gemeten, want daar hoort een
+            # voorgrondstrook; PIL rekent vanaf boven
+            vel = vel.crop((0, round(h * (1 - tot)), vel.width, round(h * (1 - van))))
+            print(f"  strook {van}-{tot} van onderaf: {vel.width}x{vel.height}")
+
+        if args.donker != 1.0:
+            arr = np.asarray(vel, dtype=np.float32)
+            arr[..., :3] *= args.donker
+            # een silhouet verliest ook kleur: naar het blauw van de nacht toe
+            blauw = np.array([11.0, 22.0, 64.0])
+            meng = max(0.0, 1.0 - args.donker) * 0.55
+            arr[..., :3] = arr[..., :3] * (1 - meng) + blauw * meng
+            vel = Image.fromarray(np.clip(arr, 0, 255).astype(np.uint8), "RGBA")
+            print(f"  verduisterd naar {args.donker:.2f}")
 
         if args.grijs:
             vel = naar_detailkaart(vel)

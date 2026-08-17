@@ -13,5 +13,10 @@
     "bestand": "dichtbij.webp",
     "breedte": 1562,
     "hoogte": 887
+  },
+  "voorgrond": {
+    "bestand": "voorgrond.webp",
+    "breedte": 1406,
+    "hoogte": 164
   }
 }

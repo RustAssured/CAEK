@@ -120,13 +120,13 @@ function opPlaat(plaatMesh, vak, materiaal, { schaal = 1, z = 0.06 } = {}) {
  * de zeventien teamstands van de Cluster Review, het publiek, de Obeya --
  * verdwijnt erachter als deze band te hoog wordt. Een halve eenheid is genoeg
  * om te lezen als straat en laag genoeg om niets af te dekken. */
-const VLOER = { TEGEL: 9.0, RAND: 0.68, BOVEN_MAX: 0.55 };
+const VLOER = { TEGEL: 9.0, RAND: 0.68, BOVEN_MAX: 0.55, DIEPTE: 13.0, VOOR: -0.45 };
 
 /* De kratten waar je op springt zijn een eigen plaat: bakkersgerei in plaats
  * van zwevende stukken stoep, zodat je in één oogopslag ziet waar je op kunt
  * staan. `RAND` is waar de bovenkant van het krat zit -- daar staat de speler
  * op, dus die lijn moet op de collider vallen. */
-const KRAT = { TEGEL: 1.7, RAND: 0.36, HOOGTE: 1.15, DIEPTE: 2.6, HOUT_TEGEL: 1.6 };
+const KRAT = { TEGEL: 1.7, RAND: 0.36, HOOGTE: 1.15, DIEPTE: 2.6, HOUT_TEGEL: 1.6, MIDDEN: -1.5 };
 
 /**
  * Een echte doos met hout eromheen gewikkeld.
@@ -161,16 +161,20 @@ function houtenKrat(breedte, dikte) {
   uv.needsUpdate = true;
 
   const romp = new THREE.Mesh(geo, new THREE.MeshLambertMaterial({
-    map: TEX.hout, color: 0xffffff,
+    map: TEX.hout, color: 0xd2b48a,
   }));
   romp.position.y = -hoogte / 2;
+  // Naar achteren geschoven tot zijn voorvlak nét achter het spelvlak ligt.
+  // Een doos met echte diepte gecentreerd op z = 0 staat óm de speler heen, en
+  // dan loopt hij onder een laag platform door met zijn hoofd in het krat.
+  romp.position.z = KRAT.MIDDEN;
   groep.add(romp);
 
   // Het landingsvlak: een dun randje bloem langs de bovenkant. Warm en niet
   // wit -- crème op vol licht leest van een afstand als sneeuw op een boomstam,
   // en dat is niet de grap die we willen maken.
   const rand = doos(breedte + 0.05, 0.08, diepte + 0.05, PALET.toast, { emissief: 0.16 });
-  rand.position.y = -0.01;
+  rand.position.set(0, -0.01, KRAT.MIDDEN);
   groep.add(rand);
 
   groep.userData.krat = romp;
@@ -189,12 +193,79 @@ function houtenKrat(breedte, dikte) {
  * Het vlak staat net achter het spelvlak, zodat de karakters op de voorrand
  * lijken te lopen in plaats van erachter te verdwijnen.
  */
+/**
+ * De straat als écht liggend vlak, met de stoeprand als losse voorkant.
+ *
+ * Dit was eerst één staande plaat met het perspectief erin geschilderd. Dat
+ * werkte, maar het bleef een sticker: het licht van de lantaarns viel er niet
+ * op, de contactschaduwen lagen op niets, en alles wat achter de straat stond
+ * -- de zeventien kraampjes van de Cluster Review -- werd erdoor afgedekt in
+ * plaats van erop te staan.
+ *
+ * Nu zijn het twee vlakken. Een liggend loopvlak dat naar achteren wegloopt,
+ * en een staande kant eronder. Twee meshes per stuk grond in plaats van één,
+ * en daarvoor terug: echte perspectief die klopt als de camera meepant, licht
+ * dat over het plaveisel strijkt, en een straat waar de wereld óp staat.
+ *
+ * De twee platen zijn uit dezelfde tekening gesneden (zie tools/backdrop.py
+ * --band), dus de naad tussen boven en voor valt precies waar de schilder hem
+ * ook heeft gezet.
+ */
+function geschilderdeStraat(breedte) {
+  const groep = new THREE.Group();
+
+  const boven = TEX.vloer_boven.clone();
+  boven.needsUpdate = true;
+  boven.wrapS = THREE.RepeatWrapping;
+  boven.wrapT = THREE.ClampToEdgeWrapping;
+  boven.repeat.set(breedte / VLOER.TEGEL, 1);
+  // elk stuk straat een eigen stukje tekening, anders zie je de herhaling
+  boven.offset.x = (breedte * 0.37) % 1;
+
+  // Lambert en niet Basic: dit vlak ligt plat, dus het vangt het strijklicht
+  // en de lantaarns. De emissiveMap houdt de geschilderde kleur overeind waar
+  // geen licht komt -- zonder die zou de straat 's nachts dichtlopen.
+  const bovenMat = new THREE.MeshLambertMaterial({
+    map: boven, emissiveMap: boven, emissive: 0xffffff,
+    emissiveIntensity: 0.52, toneMapped: false,
+  });
+  maskeer(bovenMat, 0.10);
+  const dek = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), bovenMat);
+  dek.rotation.x = -Math.PI / 2;
+  dek.scale.set(breedte, VLOER.DIEPTE, 1);
+  dek.position.set(0, 0, VLOER.VOOR - VLOER.DIEPTE / 2);
+  groep.add(dek);
+
+  const rand = TEX.vloer_rand.clone();
+  rand.needsUpdate = true;
+  rand.wrapS = THREE.RepeatWrapping;
+  rand.wrapT = THREE.ClampToEdgeWrapping;
+  rand.repeat.set(breedte / VLOER.TEGEL, 1);
+  rand.offset.x = (breedte * 0.37) % 1;
+
+  const beeld = TEX.vloer_rand.image;
+  const hoogte = VLOER.TEGEL * (beeld ? beeld.height / beeld.width : 0.23);
+  const randMat = new THREE.MeshLambertMaterial({
+    map: rand, emissiveMap: rand, emissive: 0xffffff,
+    emissiveIntensity: 0.58, toneMapped: false,
+  });
+  maskeer(randMat, 0.10);
+  const kant = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), randMat);
+  kant.scale.set(breedte, hoogte, 1);
+  kant.position.set(0, -hoogte / 2, VLOER.VOOR);
+  groep.add(kant);
+
+  groep.userData.vloervlak = dek;
+  return groep;
+}
+
 export function platform(breedte, dikte = 0.9, kleur = PALET.steen, { top = PALET.blauwLicht, zwevend = false } = {}) {
   // Een krat waar je op springt is een echte doos met hout eromheen gewikkeld,
   // geen platte plaat. Dat is het verschil tussen een sticker en iets waar je
   // omheen kunt kijken: als de camera meepant schuift het zijvlak weg en
   // onthult het bovenvlak zich. Precies die parallax is de 2.5D-diepte.
   if (zwevend && TEX.hout) return houtenKrat(breedte, dikte);
+  if (!zwevend && TEX.vloer_boven && TEX.vloer_rand) return geschilderdeStraat(breedte);
   const plaat = zwevend ? (TEX.springblok || TEX.vloer) : TEX.vloer;
   if (plaat) return geschilderdPlatform(breedte, zwevend, plaat);
   const groep = new THREE.Group();

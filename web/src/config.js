@@ -341,5 +341,18 @@ export const ACHTERGROND = {
     { id: 'ver', z: -46, factor: 0.10, hoogteDeel: 0.72, bodem: -6.5 },
     { id: 'midden', z: -30, factor: 0.26, hoogteDeel: 0.50, bodem: -1.8 },
     { id: 'dichtbij', z: -17, factor: 0.50, hoogteDeel: 0.58, bodem: -2.4 },
+
+    /* En één laag vóór het spelvlak.
+     *
+     * Dit is de goedkoopste manier om diepte te verkopen die er is: een donkere
+     * strook beplanting die sneller langs schuift dan de wereld erachter. Je
+     * oog leest dat meteen als "hier zit ruimte tussen", en het kost één quad.
+     *
+     * `factor` boven 1 is wat hem vóór het spelvlak zet -- alles achter de
+     * speler schuift langzamer, alles ervoor sneller. `zit` is hoe hoog de
+     * strook in beeld staat, gemeten vanaf de onderrand van het scherm; op deze
+     * afstand is een vaste wereldhoogte zinloos omdat het beeldvlak veel
+     * kleiner is. */
+    { id: 'voorgrond', z: 3.2, factor: 1.30, hoogteDeel: 0.22, zit: 0.26, voor: true },
   ],
 };

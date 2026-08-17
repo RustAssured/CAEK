@@ -63,5 +63,15 @@
     "bestand": "doelenwiel.webp",
     "breedte": 900,
     "hoogte": 888
+  },
+  "vloer_boven": {
+    "bestand": "vloer_boven.webp",
+    "breedte": 1024,
+    "hoogte": 329
+  },
+  "vloer_rand": {
+    "bestand": "vloer_rand.webp",
+    "breedte": 1024,
+    "hoogte": 240
   }
 }
