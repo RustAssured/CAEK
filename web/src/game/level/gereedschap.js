@@ -285,9 +285,35 @@ export function pingOven(level, x, z, tekst, schaal = 0.55) {
   const o = props.oven(schaal, { tekst });
   level.plaats(o, x, 0, z);
   level.tik((dt, speler, s) => {
-    o.userData.vuur.material = gloed(PALET.oranje, 1.2 + Math.sin(s.klok * 2.4) * 0.45);
+    o.userData.gloeien(PALET.oranje, 1.2 + Math.sin(s.klok * 2.4) * 0.45);
   });
+  laatRoken(level, o, `oven${x}`);
   return o;
+}
+
+/**
+ * Laat de pijp van een oven roken.
+ *
+ * Rook doet twee dingen tegelijk. Ze verraadt dat er iets stáát te gebeuren --
+ * een oven zonder rook is meubilair -- en ze geeft de lucht diepte, want een
+ * pluim die langzaam wegdrijft laat je zien hoe ver weg iets staat. Precies
+ * wat een 2.5D-wereld nodig heeft.
+ *
+ * De plek wordt elke tik opnieuw uitgelezen: ovens worden geplaatst nadat ze
+ * gebouwd zijn, en sommige staan op een platform dat later nog schuift.
+ */
+export function laatRoken(level, oven, sleutel, { tempo = 1.5 } = {}) {
+  const punt = oven.userData?.schoorsteen;
+  if (!punt) return;
+  const plek = new THREE.Vector3();
+  const maat = oven.userData.hoogte ? oven.scale.x : 1;
+  level.tik((dt, speler, s) => {
+    if (!s.deeltjes) return;
+    punt.getWorldPosition(plek);
+    s.deeltjes.pluim(sleutel, dt, plek.x, plek.y, plek.z, {
+      tempo, spreiding: 0.4 * maat, omhoog: 1.1 + maat * 0.5,
+    });
+  });
 }
 
 export { props, PALET, verf, gloed };

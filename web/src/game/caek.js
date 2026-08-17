@@ -10,7 +10,7 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { NATUURKUNDE as N, SUPERCAEK } from '../config.js';
-import { PALET, maskeer } from '../world/materialen.js';
+import { PALET, maskeer, meng, vlekTextuur } from '../world/materialen.js';
 
 const DOEL_HOOGTE = N.spelerHoogte;
 /** Hoever Caek naar de kijker toe blijft draaien; puur 90 graden leest als
@@ -184,6 +184,57 @@ export class Caek {
     this.klok = 0;
 
     this.#maakCape();
+    this.#maakSchaduw();
+  }
+
+  /**
+   * De contactschaduw: een zachte vlek op de grond onder het figuurtje.
+   *
+   * Dit is de goedkoopste manier om een 2D-sprite in een 3D-wereld te zetten.
+   * Zonder schaduw zweeft een tekening; met schaduw staat hij ergens. En bij
+   * een sprong vertelt de vlek waar je gaat landen -- dat is geen sfeer maar
+   * bediening, en in een platformer het verschil tussen raden en mikken.
+   *
+   * De vlek hangt niet aan het figuurtje maar aan de wereld: hij blijft op de
+   * vloer liggen terwijl de speler omhoog gaat, kleiner en vager naarmate de
+   * afstand groeit.
+   */
+  #maakSchaduw() {
+    const materiaal = meng(new THREE.MeshBasicMaterial({
+      map: vlekTextuur(), color: 0x000000, toneMapped: false,
+    }), 'onder');
+    this.schaduw = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), materiaal);
+    this.schaduw.rotation.x = -Math.PI / 2;
+    this.schaduw.renderOrder = 1;
+    this.schaduw.frustumCulled = false;
+    this.schaduwMat = materiaal;
+    this.level?.scene?.add(this.schaduw);
+  }
+
+  /** Zoek de vloer recht onder de speler; -Infinity als er geen is. */
+  #vloerOnder() {
+    let hoogste = -Infinity;
+    for (const vloer of this.level.vloeren) {
+      if (this.positie.x < vloer.x0 || this.positie.x > vloer.x1) continue;
+      if (vloer.y <= this.positie.y + 0.05 && vloer.y > hoogste) hoogste = vloer.y;
+    }
+    return hoogste;
+  }
+
+  #werkSchaduwBij() {
+    if (!this.schaduw) return;
+    const vloer = this.#vloerOnder();
+    const zichtbaar = this.groep.visible && Number.isFinite(vloer);
+    this.schaduw.visible = zichtbaar;
+    if (!zichtbaar) return;
+    const val = Math.max(0, this.positie.y - vloer);
+    // 4 eenheden hoogte is de top van een normale sprong; daarboven mag hij
+    // gerust bijna weg zijn
+    const ver = Math.min(1, val / 4.2);
+    const maat = (this.superActief ? 2.9 : 2.3) * (1 - ver * 0.42);
+    this.schaduw.scale.set(maat, maat, 1);
+    this.schaduw.position.set(this.positie.x, vloer + 0.035, this.positie.z + 0.15);
+    this.schaduwMat.opacity = 0.5 * (1 - ver * 0.72);
   }
 
   /**
@@ -363,6 +414,7 @@ export class Caek {
       this.coyote = 0;
       this.opGrond = false;
       this.geluid?.sprong();
+      this.deeltjes?.afzet(this.positie.x, this.positie.y, this.positie.z);
       this.acties.springen?.reset();
       this.speel('springen', 0.08);
     }
@@ -403,6 +455,7 @@ export class Caek {
       this.#synchroniseerSuper(dt);
     }
     this.groep.position.copy(this.positie);
+    this.#werkSchaduwBij();
   }
 
   #beweeg(dt) {
@@ -434,6 +487,8 @@ export class Caek {
           if (this.snelheid.y < -6) {
             this.geluid?.land();
             this.poppetje?.stuiter(0.78);
+            this.deeltjes?.landing(this.positie.x, vloer.y, this.positie.z,
+              Math.min(1.4, -this.snelheid.y / 18));
           }
           this.snelheid.y = 0;
           this.opGrond = true;

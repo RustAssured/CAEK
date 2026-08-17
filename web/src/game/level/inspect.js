@@ -13,7 +13,7 @@
  * het woord. */
 
 import * as THREE from 'three';
-import { props, PALET, verf, gloed } from './gereedschap.js';
+import { props, PALET, verf, gloed, laatRoken } from './gereedschap.js';
 import { DOELENWIEL, PI, WAARDE } from '../../config.js';
 import { pauze } from '../../ui/dialoog.js';
 
@@ -144,8 +144,9 @@ export function taakInspect(level, spel, zaal) {
 
   const slotOven = props.oven(1.6, { tekst: 'EINDE PI', gloedKleur: PALET.goudLicht });
   level.plaats(slotOven, x0 + lengte - 4, 0, -7);
+  laatRoken(level, slotOven, 'slotoven', { tempo: 2.4 });
   level.tik((dt, speler, sp) => {
-    slotOven.userData.vuur.material = gloed(PALET.goudLicht, 1.2 + Math.sin(sp.klok * 2.2) * 0.4);
+    slotOven.userData.gloeien(PALET.goudLicht, 1.2 + Math.sin(sp.klok * 2.2) * 0.4);
   });
   spel.slotOven = slotOven;
 

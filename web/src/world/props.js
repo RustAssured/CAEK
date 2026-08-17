@@ -5,7 +5,10 @@
  * harde kleurvlakken zijn precies wat de olieverf-pipeline mooi maakt. */
 
 import * as THREE from 'three';
-import { PALET, verf, gloed, maskeer, maskeerEigen, tekstTextuur, emojiTextuur } from './materialen.js';
+import {
+  PALET, verf, gloed, maskeer, maskeerEigen, meng, vlekTextuur,
+  tekstTextuur, emojiTextuur,
+} from './materialen.js';
 
 const DOOS = new THREE.BoxGeometry(1, 1, 1);
 const BOL = new THREE.SphereGeometry(0.5, 18, 14);
@@ -53,6 +56,59 @@ export function vlak(b, h, materiaal) {
 export const TEX = {};
 export function zetTexturen(gevonden) { Object.assign(TEX, gevonden); }
 
+/* En de echte 3D-modellen, voor de paar objecten waar het de moeite waard is.
+ * Zie world/modellen.js. Leeg is prima: dan wint de plaat. */
+export const MODEL = {};
+export function zetModellen(gevonden) { Object.assign(MODEL, gevonden); }
+
+/* ------------------------------------------------------------------ *
+ * Geschilderde platen als props
+ * ------------------------------------------------------------------ */
+
+/**
+ * Een geschilderde plaat als staand vlak, met de voet op y = 0.
+ *
+ * Ondoorzichtig met een alphaTest en niet transparant: alleen dan draagt het
+ * alfakanaal het verfmasker (zie maskeer()). De platen zijn met echte
+ * transparantie gerenderd, dus de test snijdt schoon.
+ */
+function plaat(textuur, hoogte, { masker = 0.10, z = 0 } = {}) {
+  const beeld = textuur.image;
+  const breedte = hoogte * (beeld ? beeld.width / beeld.height : 1);
+  const materiaal = new THREE.MeshBasicMaterial({
+    map: textuur, transparent: false, alphaTest: 0.45, toneMapped: false,
+  });
+  maskeer(materiaal, masker);
+  const mesh = new THREE.Mesh(VLAK, materiaal);
+  mesh.scale.set(breedte, hoogte, 1);
+  mesh.position.set(0, hoogte / 2, z);
+  mesh.userData.maat = { breedte, hoogte };
+  return mesh;
+}
+
+/* Waar op elke plaat iets overheen moet: de mond van de oven, het lege paneel
+ * van een bord, het scherm waar de demo op komt. Alles als fractie van de
+ * plaat -- [x, y, breedte, hoogte], met x en y vanaf de linkeronderhoek.
+ * Uitgemeten op de tekeningen zelf; komt er ooit een nieuwe render, dan is dit
+ * het enige dat mee hoeft. */
+const PLAAT = {
+  oven:   { hoogte: 9.4, mond: [0.41, 0.46, 0.26, 0.30] },
+  bord:   { paneel: [0.50, 0.75, 0.78, 0.26] },
+  deur:   { blad: [0.50, 0.42, 0.42, 0.68] },
+  scherm: { beeld: [0.50, 0.655, 0.78, 0.52] },
+  tafel:  { hoogte: 3.1, blad: 0.50 },
+  wiel:   { binnen: 0.33, buiten: 0.86, rand: 1.06, start: Math.PI / 8 },
+};
+
+/** Zet een vlak op een uitgemeten plek van een plaat, in de maat van die plek. */
+function opPlaat(plaatMesh, vak, materiaal, { schaal = 1, z = 0.06 } = {}) {
+  const { breedte, hoogte } = plaatMesh.userData.maat;
+  const [x, y, b, h] = vak;
+  const m = vlak(b * breedte * schaal, h * hoogte * schaal, materiaal);
+  m.position.set((x - 0.5) * breedte, y * hoogte, plaatMesh.position.z + z);
+  return m;
+}
+
 /* Maatvoering van de vloerplaat.
  *
  * `TEGEL` is hoeveel wereldeenheden één herhaling beslaat. `RAND` is waar in
@@ -70,7 +126,56 @@ const VLOER = { TEGEL: 9.0, RAND: 0.68, BOVEN_MAX: 0.55 };
  * van zwevende stukken stoep, zodat je in één oogopslag ziet waar je op kunt
  * staan. `RAND` is waar de bovenkant van het krat zit -- daar staat de speler
  * op, dus die lijn moet op de collider vallen. */
-const KRAT = { TEGEL: 1.7, RAND: 0.36 };
+const KRAT = { TEGEL: 1.7, RAND: 0.36, HOOGTE: 1.15, DIEPTE: 2.6, HOUT_TEGEL: 1.6 };
+
+/**
+ * Een echte doos met hout eromheen gewikkeld.
+ *
+ * De houttegel gaat op alle zes de vlakken, met de herhaling per vlak
+ * berekend uit de wereldmaat -- anders wordt de nerf op een breed krat
+ * uitgerekt en op een smal krat samengeperst, en dan zie je meteen dat het
+ * dezelfde tegel is.
+ *
+ * Bovenop een dun lichter randje: dat is het vlak waar je op landt, en het
+ * scheelt in leesbaarheid enorm of je die rand ziet liggen.
+ */
+function houtenKrat(breedte, dikte) {
+  const groep = new THREE.Group();
+  const hoogte = Math.max(KRAT.HOOGTE, dikte);
+  const diepte = KRAT.DIEPTE;
+
+  const geo = new THREE.BoxGeometry(breedte, hoogte, diepte);
+  // per vlak de uv's schalen zodat de nerf overal even groot is
+  const uv = geo.attributes.uv;
+  const maten = [
+    [diepte, hoogte], [diepte, hoogte],   // rechts, links
+    [breedte, diepte], [breedte, diepte], // boven, onder
+    [breedte, hoogte], [breedte, hoogte], // voor, achter
+  ];
+  for (let vlak = 0; vlak < 6; vlak++) {
+    const [b, h] = maten[vlak];
+    for (let i = vlak * 4; i < vlak * 4 + 4; i++) {
+      uv.setXY(i, uv.getX(i) * (b / KRAT.HOUT_TEGEL), uv.getY(i) * (h / KRAT.HOUT_TEGEL));
+    }
+  }
+  uv.needsUpdate = true;
+
+  const romp = new THREE.Mesh(geo, new THREE.MeshLambertMaterial({
+    map: TEX.hout, color: 0xffffff,
+  }));
+  romp.position.y = -hoogte / 2;
+  groep.add(romp);
+
+  // Het landingsvlak: een dun randje bloem langs de bovenkant. Warm en niet
+  // wit -- crème op vol licht leest van een afstand als sneeuw op een boomstam,
+  // en dat is niet de grap die we willen maken.
+  const rand = doos(breedte + 0.05, 0.08, diepte + 0.05, PALET.toast, { emissief: 0.16 });
+  rand.position.y = -0.01;
+  groep.add(rand);
+
+  groep.userData.krat = romp;
+  return groep;
+}
 
 /**
  * Een looppad. Geeft de mesh terug; de collider maakt level.js zelf.
@@ -85,6 +190,11 @@ const KRAT = { TEGEL: 1.7, RAND: 0.36 };
  * lijken te lopen in plaats van erachter te verdwijnen.
  */
 export function platform(breedte, dikte = 0.9, kleur = PALET.steen, { top = PALET.blauwLicht, zwevend = false } = {}) {
+  // Een krat waar je op springt is een echte doos met hout eromheen gewikkeld,
+  // geen platte plaat. Dat is het verschil tussen een sticker en iets waar je
+  // omheen kunt kijken: als de camera meepant schuift het zijvlak weg en
+  // onthult het bovenvlak zich. Precies die parallax is de 2.5D-diepte.
+  if (zwevend && TEX.hout) return houtenKrat(breedte, dikte);
   const plaat = zwevend ? (TEX.springblok || TEX.vloer) : TEX.vloer;
   if (plaat) return geschilderdPlatform(breedte, zwevend, plaat);
   const groep = new THREE.Group();
@@ -171,7 +281,46 @@ function geschilderdPlatform(breedte, zwevend, plaat) {
  * Borden en tekst
  * ------------------------------------------------------------------ */
 
-export function bord(regels, {
+export function bord(regels, opties = {}) {
+  if (TEX.bord) return geschilderdBord(regels, opties);
+  return gebouwdBord(regels, opties);
+}
+
+/**
+ * Het geschilderde bord: één plaat, en de tekst erop gerenderd.
+ *
+ * De tekst blijft nadrukkelijk uit de plaat. Alle grappen staan op deze
+ * borden en de teamnamen wisselen; die wil je kunnen aanpassen zonder opnieuw
+ * te renderen. De plaat levert het lege paneel, het spel schrijft erop.
+ *
+ * De breedte is leidend en niet de hoogte: borden staan naast elkaar in een
+ * sidescroller, dus horizontale ruimte is waar het knelt.
+ */
+function geschilderdBord(regels, {
+  breedte = 3.4, hoogte = 1.7, tekstKleur = '#fdf3d8', grootte = 62,
+} = {}) {
+  const groep = new THREE.Group();
+  const beeld = TEX.bord.image;
+  const verhouding = beeld ? beeld.height / beeld.width : 0.63;
+  const plaatBreedte = breedte * 1.16;
+  const vel = plaat(TEX.bord, plaatBreedte * verhouding, { masker: 0.10 });
+  groep.add(vel);
+
+  const [, , vb, vh] = PLAAT.bord.paneel;
+  const tex = tekstTextuur(regels, {
+    breedte: 768, hoogte: Math.round(768 * (vh * vel.userData.maat.hoogte) / (vb * plaatBreedte)),
+    achtergrond: 'geen', rand: 'geen', kleur: tekstKleur, grootte,
+  });
+  const paneelMat = new THREE.MeshBasicMaterial({ map: tex, transparent: false, alphaTest: 0.4, depthWrite: false });
+  maskeer(paneelMat, 0.04);
+  const paneel = opPlaat(vel, PLAAT.bord.paneel, paneelMat, { schaal: 0.94, z: 0.05 });
+  paneel.renderOrder = 5;
+  groep.add(paneel);
+  groep.userData.hoogte = vel.userData.maat.hoogte;
+  return groep;
+}
+
+function gebouwdBord(regels, {
   breedte = 3.4, hoogte = 1.7, paal = 1.6, kleur = PALET.blauwDiep,
   rand = PALET.goud, tekstKleur = '#fdf3d8', grootte = 62,
 } = {}) {
@@ -204,11 +353,16 @@ export function bord(regels, {
 /** Zwevend labeltje boven een object. `plaat` zet er een donker bordje achter,
  *  want los goud op donkerblauw verdwijnt in de verf. */
 export function label(tekst, { breedte = 2.6, kleur = '#ffd873', grootte = 68, plaat = false } = {}) {
+  // 1024 breed en niet 512: sinds de olieverf van de voorgrond af is, is een
+  // wazige letter gewoon een wazige letter en geen penseelstreek meer.
   const tex = tekstTextuur(tekst, {
-    breedte: 512, hoogte: 160, kleur, grootte,
-    achtergrond: plaat ? 'rgba(11,22,64,.72)' : 'geen',
-    rand: plaat ? 'rgba(245,178,41,.9)' : 'geen',
-    randDikte: 8,
+    breedte: 1024, hoogte: 320, kleur: kleur, grootte: grootte * 2,
+    // Dekkend en niet 72%: het plaatje is #0b1640 en dat is exact de kleur
+    // van de nachtlucht erachter. Half doorzichtig verdween het bordje
+    // daarin op, en bleef er alleen een gouden streepje over.
+    achtergrond: plaat ? '#0e1c52' : 'geen',
+    rand: plaat ? '#f5b229' : 'geen',
+    randDikte: 16,
   });
   // Ondoorzichtig met een alphaTest in plaats van transparant: alleen dan kan
   // het alfakanaal het verfmasker dragen, en tekst die je niet kunt lezen is
@@ -217,7 +371,7 @@ export function label(tekst, { breedte = 2.6, kleur = '#ffd873', grootte = 68, p
     map: tex, transparent: false, alphaTest: 0.4, depthWrite: false,
   });
   maskeer(materiaal, 0.06);
-  const m = vlak(breedte, breedte * 160 / 512, materiaal);
+  const m = vlak(breedte, breedte * 320 / 1024, materiaal);
   m.renderOrder = 5;
   return m;
 }
@@ -226,7 +380,104 @@ export function label(tekst, { breedte = 2.6, kleur = '#ffd873', grootte = 68, p
  * De ovens
  * ------------------------------------------------------------------ */
 
+/**
+ * De oven. Drie uitvoeringen, dezelfde bediening.
+ *
+ * Bij voorkeur het echte model: dat is precies het soort object waar 2.5D
+ * voor bedoeld is. De deuren staan open, de camera pant erlangs en je kijkt
+ * even de vlammen in. Geen plaat doet dat na.
+ *
+ * Wie hem aanroept hoeft het verschil niet te weten. `userData.gloeien()`
+ * regelt het vuur, `userData.deur` gaat dicht als de PI erop zit -- dat werkt
+ * in alle drie de uitvoeringen.
+ */
 export function oven(schaal = 1, { tekst = 'OVEN', gloedKleur = PALET.oranje } = {}) {
+  const groep = MODEL.oven ? gemodelleerdeOven(gloedKleur)
+    : TEX.oven ? geschilderdeOven(gloedKleur)
+      : gebouwdeOven(gloedKleur);
+
+  // Het naambord hangt vóór de oven en niet erboven: de ovens zijn hoog, en
+  // op 1,6 keer schaal loopt een bord boven de pijp zo het beeld uit.
+  const hoogte = groep.userData.hoogte;
+  const naambord = label(tekst, { breedte: hoogte * 0.46, grootte: 56, plaat: true });
+  naambord.position.set(0, hoogte * 0.60, hoogte * 0.42);
+  groep.add(naambord);
+
+  groep.scale.setScalar(schaal);
+  return groep;
+}
+
+/* Het vuur als losse additieve vlek over de mond heen.
+ *
+ * De vlammen zitten al in de textuur; dit maakt ze levend. Additief, dus wat
+ * eronder ligt blijft zichtbaar en het licht stapelt er alleen bovenop -- een
+ * dekkende gele rechthoek zou de hele tekening wegvagen. */
+function ovenvuur(kleur, breedte, hoogte) {
+  const materiaal = meng(new THREE.MeshBasicMaterial({
+    map: vlekTextuur(), color: kleur, toneMapped: false,
+  }));
+  const mesh = vlak(breedte, hoogte, materiaal);
+  mesh.renderOrder = 3;
+  mesh.userData.gloeien = (nieuweKleur, sterkte) => {
+    materiaal.color.set(nieuweKleur);
+    materiaal.opacity = Math.max(0, sterkte);
+  };
+  return mesh;
+}
+
+function gemodelleerdeOven(gloedKleur) {
+  const groep = new THREE.Group();
+  const m = MODEL.oven;
+  groep.add(m.wortel.clone());
+
+  // De mond zit iets onder het midden en steekt naar voren; uitgemeten op het
+  // model zelf, als fractie van zijn hoogte.
+  const mondY = m.hoogte * 0.37;
+  const mondZ = m.diepte * 0.44;
+  const vuur = ovenvuur(gloedKleur, m.breedte * 0.62, m.hoogte * 0.34);
+  vuur.position.set(0, mondY, mondZ);
+  groep.add(vuur);
+
+  // Dichtgaan kan een model met vaste deuren niet, dus dat doet een donker
+  // luik over de mond. Op de schaal waarop dit gebeurt -- één beat aan het
+  // eind van de PI -- leest dat precies als een deur die sluit.
+  const luik = doos(m.breedte * 0.52, m.hoogte * 0.34, 0.2, PALET.blauwDiep);
+  luik.position.set(0, mondY, mondZ + 0.05);
+  luik.visible = false;
+  groep.add(luik);
+
+  groep.userData.hoogte = m.hoogte;
+  groep.userData.vuur = vuur;
+  groep.userData.deur = luik;
+  groep.userData.gloeien = vuur.userData.gloeien;
+  groep.add(schoorsteen(m.breedte * 0.39, m.hoogte * 0.95, groep));
+  return groep;
+}
+
+function geschilderdeOven(gloedKleur) {
+  const groep = new THREE.Group();
+  const vel = plaat(TEX.oven, PLAAT.oven.hoogte, { masker: 0.12 });
+  groep.add(vel);
+  const { breedte, hoogte } = vel.userData.maat;
+  const [mx, my, mb, mh] = PLAAT.oven.mond;
+
+  const vuur = ovenvuur(gloedKleur, mb * breedte * 1.8, mh * hoogte * 1.8);
+  vuur.position.set((mx - 0.5) * breedte, my * hoogte, 0.08);
+  groep.add(vuur);
+
+  const luik = opPlaat(vel, PLAAT.oven.mond, verf(PALET.blauwDiep), { schaal: 1.1, z: 0.14 });
+  luik.visible = false;
+  groep.add(luik);
+
+  groep.userData.hoogte = PLAAT.oven.hoogte;
+  groep.userData.vuur = vuur;
+  groep.userData.deur = luik;
+  groep.userData.gloeien = vuur.userData.gloeien;
+  groep.add(schoorsteen(breedte * 0.32, hoogte * 0.97, groep));
+  return groep;
+}
+
+function gebouwdeOven(gloedKleur) {
   const groep = new THREE.Group();
   const romp = doos(6, 6.4, 4, PALET.blauw, { plat: true });
   romp.position.y = 3.2;
@@ -262,12 +513,21 @@ export function oven(schaal = 1, { tekst = 'OVEN', gloedKleur = PALET.oranje } =
   pijp.position.set(2.2, 8.2, 0);
   groep.add(pijp);
 
-  const naambord = label(tekst, { breedte: 6 });
-  naambord.position.set(0, 7.6, 2.2);
-  groep.add(naambord);
-
-  groep.scale.setScalar(schaal);
+  groep.userData.hoogte = 9.4;
+  groep.userData.gloeien = (kleur, sterkte) => { vuur.material = gloed(kleur, sterkte); };
+  groep.add(schoorsteen(2.2, 9.8, groep));
   return groep;
+}
+
+/* Een leeg punt op de pijp. De rook wordt niet hier gemaakt maar door het
+ * level, dat de deeltjesmotor kent; wat de oven levert is alleen de plek --
+ * inclusief zijn schaal, want een oventje van 0,55 hoort geen pluim van een
+ * oven van 1,6 te blazen. */
+function schoorsteen(x, y, groep) {
+  const punt = new THREE.Object3D();
+  punt.position.set(x, y, 0);
+  groep.userData.schoorsteen = punt;
+  return punt;
 }
 
 /* ------------------------------------------------------------------ *
@@ -275,6 +535,76 @@ export function oven(schaal = 1, { tekst = 'OVEN', gloedKleur = PALET.oranje } =
  * ------------------------------------------------------------------ */
 
 export function doelenwiel(doelen, actiefId, straal = 4) {
+  if (TEX.doelenwiel && doelen.length === 8) return geschilderdDoelenwiel(doelen, actiefId, straal);
+  return gebouwdDoelenwiel(doelen, actiefId, straal);
+}
+
+/**
+ * Het geschilderde wiel, met de gloed per segment eroverheen.
+ *
+ * De acht taartpunten zitten al in de plaat, gedempt. Wat het spel toevoegt is
+ * licht: elk gekoppeld doel krijgt zijn punt aangestoken. Dus liggen er acht
+ * additieve sectoren over de tekening die beginnen op bijna zwart -- additief
+ * is zwart onzichtbaar -- en die main.js aanzet door hun emissive op te
+ * hogen. Dat is precies dezelfde bediening als bij het gebouwde wiel, zodat
+ * koppelDoel() geen weet hoeft te hebben van welk wiel er hangt.
+ *
+ * De naad tussen de punten staat in de plaat op 22,5 graden en niet op nul.
+ * Vandaar PLAAT.wiel.start: zonder die draai zou de gloed dwars over de
+ * geschilderde scheidslijnen heen liggen.
+ */
+function geschilderdDoelenwiel(doelen, actiefId, straal) {
+  const groep = new THREE.Group();
+  const W = PLAAT.wiel;
+  const stap = (Math.PI * 2) / doelen.length;
+
+  const beeld = TEX.doelenwiel.image;
+  const breedte = straal * 2 * W.rand;
+  // De plaat komt vol verzadigd binnen; als alle acht punten al branden valt
+  // er niets meer aan te steken. Dus gaat de tekening omlaag naar maanlicht en
+  // haalt de gloed hem per doel terug.
+  const materiaal = new THREE.MeshBasicMaterial({
+    map: TEX.doelenwiel, transparent: false, alphaTest: 0.45, toneMapped: false,
+    color: 0x6d7a9c,
+  });
+  maskeer(materiaal, 0.12);
+  const vel = vlak(breedte, breedte * (beeld ? beeld.height / beeld.width : 1), materiaal);
+  vel.position.z = -0.04;
+  groep.add(vel);
+
+  doelen.forEach((doel, i) => {
+    const start = W.start + i * stap;
+    const vorm = new THREE.RingGeometry(
+      straal * W.binnen, straal * W.buiten, 20, 1, start, stap * 0.94,
+    );
+    // Zwart met een emissive die het werk doet: onder additief mengen draagt
+    // color niets bij, dus wat je ziet is puur de gloed.
+    const mat = meng(new THREE.MeshLambertMaterial({
+      color: 0x000000,
+      emissive: new THREE.Color(doel.kleur).multiplyScalar(doel.id === actiefId ? 0.85 : 0.0),
+      toneMapped: false,
+    }));
+    const segment = new THREE.Mesh(vorm, mat);
+    segment.userData.doel = doel.id;
+    segment.renderOrder = 3;
+    if (doel.id === actiefId) groep.userData.actiefSegment = segment;
+    groep.add(segment);
+
+    const iconMat = new THREE.MeshBasicMaterial({ map: emojiTextuur(doel.icoon), transparent: true, depthWrite: false });
+    const icon = vlak(straal * 0.26, straal * 0.26, iconMat);
+    const hoek = start + stap / 2;
+    icon.position.set(Math.cos(hoek) * straal * 0.60, Math.sin(hoek) * straal * 0.60, 0.10);
+    icon.renderOrder = 4;
+    groep.add(icon);
+  });
+
+  const tekst = label(['DOELEN', 'UWV'], { breedte: straal * 0.56, kleur: '#0b1640', grootte: 54 });
+  tekst.position.z = 0.12;
+  groep.add(tekst);
+  return groep;
+}
+
+function gebouwdDoelenwiel(doelen, actiefId, straal) {
   const groep = new THREE.Group();
   const stap = (Math.PI * 2) / doelen.length;
 
@@ -449,7 +779,64 @@ export function taartje(kleur = PALET.goud) {
   return groep;
 }
 
-export function demotafel(kleur = PALET.blauwLicht) {
+/**
+ * De demotafel. `userData.taart` is wat erop staat, en dat is een gag.
+ *
+ * De hele Cluster Review draait erom: Caek heeft nog niets te laten zien, en
+ * dan ineens wel. Dus moet wat er op tafel staat aan en uit kunnen, en moet
+ * hij plat kunnen slaan (die keer dat het bijna misgaat).
+ *
+ * De geschilderde plaat is daarom in twee stukken opgesneden: onder de
+ * tafelrand het meubel, erboven alles wat erop staat. Dat bovenstuk hangt in
+ * een eigen groep met zijn draaipunt op het tafelblad, zodat schalen het naar
+ * beneden plet in plaats van door het blad heen.
+ *
+ * `variant` kiest tussen de twee tekeningen: de gewone tafel voor de reviews,
+ * de rijkere voor Inspect & Adapt -- daar staat een kwartaal werk op.
+ */
+export function demotafel(kleur = PALET.blauwLicht, { variant = 1 } = {}) {
+  const plaatje = variant >= 2 ? (TEX.demotafel2 || TEX.demotafel) : (TEX.demotafel || TEX.demotafel2);
+  if (plaatje) return geschilderdeDemotafel(plaatje);
+  return gebouwdeDemotafel(kleur);
+}
+
+function geschilderdeDemotafel(plaatje) {
+  const groep = new THREE.Group();
+  const beeld = plaatje.image;
+  const hoogte = PLAAT.tafel.hoogte;
+  const breedte = hoogte * (beeld ? beeld.width / beeld.height : 1.33);
+  const deel = PLAAT.tafel.blad;
+
+  const maak = (vanaf, tot, y) => {
+    const tex = plaatje.clone();
+    tex.needsUpdate = true;
+    tex.wrapS = tex.wrapT = THREE.ClampToEdgeWrapping;
+    tex.offset.set(0, vanaf);
+    tex.repeat.set(1, tot - vanaf);
+    const mat = new THREE.MeshBasicMaterial({
+      map: tex, transparent: false, alphaTest: 0.45, toneMapped: false,
+    });
+    maskeer(mat, 0.10);
+    const m = vlak(breedte, hoogte * (tot - vanaf), mat);
+    m.position.y = y;
+    return m;
+  };
+
+  const meubel = maak(0, deel, hoogte * deel / 2);
+  groep.add(meubel);
+
+  // eigen groep met het draaipunt op de tafelrand: schalen plet naar beneden
+  const bovenop = new THREE.Group();
+  bovenop.position.y = hoogte * deel;
+  bovenop.add(maak(deel, 1, hoogte * (1 - deel) / 2));
+  groep.add(bovenop);
+
+  groep.userData.hoogte = hoogte;
+  groep.userData.taart = bovenop;
+  return groep;
+}
+
+function gebouwdeDemotafel(kleur) {
   const groep = new THREE.Group();
   const blad = doos(3.2, 0.28, 2.2, PALET.korst);
   blad.position.y = 1.1;
@@ -480,7 +867,40 @@ export function podium(breedte = 8) {
   return groep;
 }
 
+/**
+ * Het presentatiescherm. `userData.projecteer()` zet er licht op.
+ *
+ * Bij de geschilderde uitvoering is het scherm al een crèmekleurig vlak; wat
+ * het spel doet is het aanzetten. Additief, want een dekkende rechthoek zou
+ * het penseelwerk in de projectie wegvagen -- en juist dat penseelwerk maakt
+ * dat het licht van een lamp lijkt te komen en niet van een LED.
+ */
 export function scherm(breedte = 9, hoogte = 5) {
+  if (TEX.scherm) return geschilderdScherm(hoogte);
+  return gebouwdScherm(breedte, hoogte);
+}
+
+function geschilderdScherm(hoogte) {
+  const groep = new THREE.Group();
+  const vel = plaat(TEX.scherm, hoogte * 1.28, { masker: 0.10 });
+  groep.add(vel);
+
+  const straalMat = meng(new THREE.MeshBasicMaterial({ color: PALET.room, toneMapped: false }));
+  straalMat.opacity = 0;
+  const beeld = opPlaat(vel, PLAAT.scherm.beeld, straalMat, { schaal: 0.98, z: 0.05 });
+  beeld.renderOrder = 3;
+  groep.add(beeld);
+
+  groep.userData.hoogte = vel.userData.maat.hoogte;
+  groep.userData.beeld = beeld;
+  groep.userData.projecteer = (kleur, sterkte) => {
+    straalMat.color.set(kleur);
+    straalMat.opacity = Math.max(0, sterkte);
+  };
+  return groep;
+}
+
+function gebouwdScherm(breedte, hoogte) {
   const groep = new THREE.Group();
   const lijst = doos(breedte + 0.5, hoogte + 0.5, 0.5, PALET.blauwDiep);
   lijst.position.y = hoogte / 2;
@@ -494,6 +914,10 @@ export function scherm(breedte = 9, hoogte = 5) {
     poot.position.set(x, hoogte * 0.45, 0);
     groep.add(poot);
   }
+  groep.userData.hoogte = hoogte;
+  groep.userData.projecteer = (kleur, sterkte) => {
+    beeld.material = verf(kleur, { emissief: sterkte });
+  };
   return groep;
 }
 
@@ -585,7 +1009,86 @@ export function broodrooster() {
   return groep;
 }
 
+/**
+ * Een deur. `userData.kleuren()` verft het blad, `userData.open()` haalt hem weg.
+ *
+ * Dat zijn twee losse handelingen omdat het spel ze los gebruikt: de drie
+ * deuren in sprint 3 krijgen elk hun eigen kleur, en er gaat er precies één
+ * open. Bij de geschilderde uitvoering wordt de plaat getint in plaats van
+ * overgeschilderd -- een dekkend gekleurd vlak zou de tekening wegvagen.
+ */
 export function deur(regels, breedte = 3, hoogte = 4.6) {
+  if (MODEL.deur) return gemodelleerdeDeur(regels);
+  if (TEX.deur) return geschilderdeDeur(regels, hoogte);
+  return gebouwdeDeur(regels, breedte, hoogte);
+}
+
+/**
+ * De gemodelleerde deur: een stenen poort met een taartje ernaast.
+ *
+ * Kleuren doet hier hetzelfde als bij de plaat -- de tekening tinten en niet
+ * overschilderen. Opengaan is bij een model wél echt: de poort verdwijnt en je
+ * loopt erdoorheen, en dat leest beter dan een deurblad dat oplost.
+ */
+function gemodelleerdeDeur(regels) {
+  const groep = new THREE.Group();
+  const m = MODEL.deur;
+  const poort = m.wortel.clone();
+  groep.add(poort);
+
+  const bordje = label(regels, { breedte: m.breedte * 0.86, grootte: 52, plaat: true });
+  // Ruim vóór het model en niet er middenin: een 3D-prop heeft diepte, en een
+  // bordje dat op de halve diepte hangt wordt door zijn eigen boog afgesneden.
+  bordje.position.set(0, m.hoogte * 1.10, m.diepte * 1.4);
+  groep.add(bordje);
+
+  // Licht in de doorgang in plaats van verf op de steen.
+  //
+  // Het model tinten was de eerste ingeving en dat werkte niet: goud, groen en
+  // paars over hetzelfde blauwgrijze metselwerk gaan alle drie naar dezelfde
+  // modder, en dan zie je juist niet meer welke deur je kiest. Een gekleurde
+  // gloed ín de opening leest wel meteen -- en met de bloei eroverheen schijnt
+  // hij de poort uit.
+  const gloedMat = meng(new THREE.MeshBasicMaterial({
+    map: vlekTextuur(), color: 0xffffff, toneMapped: false,
+  }));
+  gloedMat.opacity = 0;
+  const schijn = vlak(m.breedte * 0.58, m.hoogte * 0.72, gloedMat);
+  schijn.position.set(0, m.hoogte * 0.44, m.diepte * 0.52);
+  schijn.renderOrder = 3;
+  groep.add(schijn);
+
+  groep.userData.hoogte = m.hoogte;
+  groep.userData.blad = poort;
+  groep.userData.kleuren = (kleur) => {
+    gloedMat.color.set(kleur);
+    gloedMat.opacity = 0.62;
+  };
+  groep.userData.open = () => { poort.visible = false; schijn.visible = false; };
+  return groep;
+}
+
+function geschilderdeDeur(regels, hoogte) {
+  const groep = new THREE.Group();
+  const vel = plaat(TEX.deur, hoogte * 1.12, { masker: 0.10 });
+  groep.add(vel);
+
+  const bordje = label(regels, { breedte: vel.userData.maat.breedte * 0.9, grootte: 48, plaat: true });
+  bordje.position.set(0, vel.userData.maat.hoogte * 1.05, 0.1);
+  groep.add(bordje);
+
+  groep.userData.hoogte = vel.userData.maat.hoogte;
+  groep.userData.blad = vel;
+  groep.userData.kleuren = (kleur) => {
+    // licht getint: de tekening moet leesbaar blijven, het is een hint welke
+    // deur bij welk antwoord hoort en geen kleurvlak
+    vel.material.color.set(kleur).lerp(new THREE.Color(0xffffff), 0.45);
+  };
+  groep.userData.open = () => { vel.visible = false; };
+  return groep;
+}
+
+function gebouwdeDeur(regels, breedte, hoogte) {
   const groep = new THREE.Group();
   const kozijn = doos(breedte + 0.5, hoogte + 0.4, 0.7, PALET.korst);
   kozijn.position.y = hoogte / 2;
@@ -600,6 +1103,9 @@ export function deur(regels, breedte = 3, hoogte = 4.6) {
   const kruk = bol(0.16, PALET.goud, { emissief: 0.5 });
   kruk.position.set(breedte * 0.34, hoogte * 0.45, 0.5);
   groep.add(kruk);
+  groep.userData.hoogte = hoogte;
+  groep.userData.kleuren = (kleur) => { blad.material = verf(kleur, { emissief: 0.2 }); };
+  groep.userData.open = () => { blad.visible = false; };
   return groep;
 }
 

@@ -146,7 +146,7 @@ async function bouwProefopstelling(scene) {
   });
 
   const deur = props.deur(['STAP 3', 'FIXEN'], 2.6, 5);
-  deur.userData.blad.material = verf(PALET.oranje, { emissief: 0.2 });
+  deur.userData.kleuren(PALET.oranje);
   deur.position.set(21, 0, -2);
   scene.add(deur);
 

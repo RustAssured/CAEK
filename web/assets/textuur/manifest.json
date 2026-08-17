@@ -23,5 +23,45 @@
     "bestand": "publiek.webp",
     "breedte": 1633,
     "hoogte": 887
+  },
+  "hout": {
+    "bestand": "hout.webp",
+    "breedte": 768,
+    "hoogte": 853
+  },
+  "oven": {
+    "bestand": "oven.webp",
+    "breedte": 900,
+    "hoogte": 1125
+  },
+  "bord": {
+    "bestand": "bord.webp",
+    "breedte": 900,
+    "hoogte": 563
+  },
+  "deur": {
+    "bestand": "deur.webp",
+    "breedte": 900,
+    "hoogte": 1125
+  },
+  "scherm": {
+    "bestand": "scherm.webp",
+    "breedte": 900,
+    "hoogte": 600
+  },
+  "demotafel": {
+    "bestand": "demotafel.webp",
+    "breedte": 900,
+    "hoogte": 675
+  },
+  "demotafel2": {
+    "bestand": "demotafel2.webp",
+    "breedte": 900,
+    "hoogte": 675
+  },
+  "doelenwiel": {
+    "bestand": "doelenwiel.webp",
+    "breedte": 900,
+    "hoogte": 888
   }
 }

@@ -192,6 +192,68 @@ void main() {
 `;
 
 /* ------------------------------------------------------------------ *
+ * Bloei
+ * ------------------------------------------------------------------ *
+ * Wat licht geeft moet ook licht gééven: de vlammen in een ovenmond, de
+ * gouden ringen, de lantaarns langs de straat, de vonken bij een waardepunt.
+ * Zolang de olieverffilter over alles heen lag deed die het werk -- die
+ * smeert licht vanzelf uit. Nu de voorgrond scherp blijft, is er niets meer
+ * dat verraadt dat iets gloeit, en dan is een vlam net zo plat als een gele
+ * rechthoek.
+ *
+ * Twee passes op een kwart resolutie: helderheid eruit trekken, dan breed
+ * uitsmeren. Op een kwart is dat vrijwel gratis, en juist bij bloei is die
+ * lage resolutie geen verlies maar precies wat je wilt.
+ */
+export const helderFragment = /* glsl */ `
+precision highp float;
+varying vec2 vUv;
+uniform sampler2D uBron;
+uniform vec2 uPixel;      // pixelmaat van de BRON, voor de 4-taps middeling
+uniform float uDrempel;
+out vec4 fragKleur;
+
+void main() {
+  // vier taps zodat er geen felle losse pixel doorheen flikkert als de camera
+  // beweegt; met één tap gaat bloei twinkelen op alles wat fijn is
+  vec3 som = texture2D(uBron, vUv + vec2(-uPixel.x, -uPixel.y)).rgb
+           + texture2D(uBron, vUv + vec2( uPixel.x, -uPixel.y)).rgb
+           + texture2D(uBron, vUv + vec2(-uPixel.x,  uPixel.y)).rgb
+           + texture2D(uBron, vUv + vec2( uPixel.x,  uPixel.y)).rgb;
+  vec3 kleur = som * 0.25;
+  float l = dot(kleur, vec3(0.2126, 0.7152, 0.0722));
+  // zachte knie in plaats van een harde drempel: anders krijg je een rand
+  // rond elk gloeiend vlak precies daar waar de drempel valt
+  float f = smoothstep(uDrempel, uDrempel + 0.35, l);
+  fragKleur = vec4(kleur * f, 1.0);
+}
+`;
+
+export const waasFragment = /* glsl */ `
+precision highp float;
+varying vec2 vUv;
+uniform sampler2D uBron;
+uniform vec2 uRichting;
+out vec4 fragKleur;
+
+void main() {
+  // 9 taps met lineaire filtering ertussen: bereikt ~17 pixels breed voor de
+  // prijs van 9, en op kwart resolutie is dat een flinke halo
+  const int R = 4;
+  vec3 som = texture2D(uBron, vUv).rgb * 0.227;
+  float gewicht = 0.227;
+  for (int i = 1; i <= R; i++) {
+    float f = float(i) * 1.7;
+    float w = exp(-(f * f) / 12.0);
+    som += texture2D(uBron, vUv + uRichting * f).rgb * w;
+    som += texture2D(uBron, vUv - uRichting * f).rgb * w;
+    gewicht += w * 2.0;
+  }
+  fragKleur = vec4(som / gewicht, 1.0);
+}
+`;
+
+/* ------------------------------------------------------------------ *
  * Gedeeld: tensor -> streekrichting + anisotropie
  * ------------------------------------------------------------------ *
  * J = [[E, F], [F, G]]. De hoofdeigenvector wijst lángs de gradiënt
@@ -577,6 +639,8 @@ uniform float uFlits;      // witte impactflits bij de transformatie
 uniform sampler2D uDiepte;
 uniform vec2 uCam;         // near, far
 uniform vec3 uMasker;      // nabij, ver, bodem
+uniform sampler2D uBloei;
+uniform float uBloeiSterkte;
 out vec4 fragKleur;
 
 ${ruis}
@@ -729,6 +793,17 @@ void main() {
     vlak *= 1.0 + 0.05 * sin(vUv.y * 180.0 + uTijd * 40.0) * uSuper;
 
     kleur = mix(kleur, vlak, uSuper);
+  }
+
+  // ---- bloei ---------------------------------------------------
+  // Vóór het vignet, want licht dat over de rand valt hoort net zo goed weg
+  // te dimmen als de rest. En na de comicmodus, zodat SuperCaeks vlakke
+  // inktvlakken ook oplichten in plaats van dat de bloei eronder verdwijnt.
+  if (uBloeiSterkte > 0.001) {
+    vec3 halo = texture2D(uBloei, vUv).rgb;
+    // screen in plaats van optellen: dan loopt een fel vlak niet dood op wit
+    // maar krijgt hij een halo die eromheen groeit
+    kleur = 1.0 - (1.0 - kleur) * (1.0 - clamp(halo * uBloeiSterkte, 0.0, 1.0));
   }
 
   // ---- vignet + doekruis ---------------------------------------

@@ -21,8 +21,8 @@ const HERHALING = {
   vloer: [THREE.RepeatWrapping, THREE.ClampToEdgeWrapping],
   springblok: [THREE.RepeatWrapping, THREE.ClampToEdgeWrapping],
   blok: [THREE.RepeatWrapping, THREE.RepeatWrapping],
+  hout: [THREE.RepeatWrapping, THREE.RepeatWrapping],
   publiek: [THREE.RepeatWrapping, THREE.ClampToEdgeWrapping],
-  teamstand: [THREE.ClampToEdgeWrapping, THREE.ClampToEdgeWrapping],
 };
 
 async function haal(bestand, naam) {

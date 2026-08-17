@@ -13,7 +13,7 @@
  * dit is wie we zijn als we er allemaal staan. */
 
 import * as THREE from 'three';
-import { props, PALET, verf, gloed, sectie, gouddraad, richtLijn } from './gereedschap.js';
+import { props, PALET, verf, gloed, sectie, gouddraad, richtLijn, laatRoken } from './gereedschap.js';
 import { DOELENWIEL, PI, TEAMS, WAARDE, koppelingen } from '../../config.js';
 import { pauze } from '../../ui/dialoog.js';
 
@@ -26,8 +26,9 @@ export function bouwPlanning(level, spel) {
 
   const oven = props.oven(1.15, { tekst: 'PI PLANNING' });
   level.plaats(oven, x0 + 8, 0, -7);
+  laatRoken(level, oven, 'planningoven', { tempo: 2.0 });
   level.tik((dt, speler, sp) => {
-    oven.userData.vuur.material = gloed(PALET.oranje, 1.4 + Math.sin(sp.klok * 3) * 0.5);
+    oven.userData.gloeien(PALET.oranje, 1.4 + Math.sin(sp.klok * 3) * 0.5);
   });
   level.plaats(props.bord(['PI PLANNING'], { breedte: 5, hoogte: 1.8, grootte: 56 }), x0 + 2, 0, 2.4);
 
@@ -52,10 +53,10 @@ export function bouwPlanning(level, spel) {
   const KOPPELINGEN = koppelingen();
   for (let i = 0; i < 6; i++) {
     const koppeling = KOPPELINGEN[Math.floor((i * TEAMS.length) / 6)];
-    const tx = x0 + 12 + i * 3.2;
-    const kaartje = props.doos(1.7, 1.1, 0.12, PALET.papier, { emissief: 0.45 });
+    const tx = x0 + 12 + i * 3.6;
+    const kaartje = props.doos(2.6, 1.5, 0.12, PALET.papier, { emissief: 0.45 });
     level.plaats(kaartje, tx, 5.2 + (i % 2) * 1.4, -3.4);
-    const naam = props.label(koppeling.team, { breedte: 1.9, kleur: '#0b1640', grootte: 60 });
+    const naam = props.label(koppeling.team, { breedte: 2.7, kleur: '#0b1640', grootte: 52 });
     level.plaats(naam, tx, 5.2 + (i % 2) * 1.4, -3.26);
 
     const draad = gouddraad(

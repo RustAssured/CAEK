@@ -164,7 +164,9 @@ export function bouwReview(level, spel, { nummer, sectieId, taak, zaalBreedte, u
   /* ---------------- je eigen demotafel ---------------- */
 
   const eigenX = muurX - 11;
-  const eigenTafel = props.demotafel(PALET.goud);
+  // Bij Inspect & Adapt staat er een kwartaal werk op tafel, geen sprintje.
+  // Vandaar de rijkere tekening; het is dezelfde tafel, voller.
+  const eigenTafel = props.demotafel(PALET.goud, { variant: laatste ? 2 : 1 });
   eigenTafel.userData.taart.visible = false;
   level.plaats(eigenTafel, eigenX, 0, -1.4);
   const eigenBord = props.label('CAEK', { breedte: 2.6, grootte: 48, plaat: true });

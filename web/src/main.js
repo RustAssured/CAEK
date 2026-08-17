@@ -11,6 +11,8 @@ import { Invoer } from './engine/input.js';
 import { Geluid } from './engine/audio.js';
 import { Level, zetLicht } from './world/level.js';
 import { laadTexturen } from './world/vloer.js';
+import { laadModellen as laadPropModellen } from './world/modellen.js';
+import { Deeltjes } from './world/deeltjes.js';
 import { bouwLevel } from './game/level/index.js';
 import { laadCaek, laadKarakter, Caek } from './game/caek.js';
 import { Cupcaek, laadCupcaek } from './game/cupcaek.js';
@@ -87,11 +89,18 @@ class Spel {
 
   async laad() {
     this.level = new Level(this.scene);
-    // de platen moeten er zijn vóór het bouwen: platform() en teamstand()
-    // kijken bij het maken of hun plaat bestaat en kiezen daar hun opbouw op
-    await laadTexturen();
+    // de platen én de modellen moeten er zijn vóór het bouwen: platform(),
+    // teamstand() en oven() kijken bij het maken wat er beschikbaar is en
+    // kiezen daar hun opbouw op
+    await Promise.all([laadTexturen(), laadPropModellen()]);
     if (SCHAKELS.sprites) await this.#laadSprites();
     else await this.#laadModellen();
+
+    // Rook, bloem en vonken. Moet er zijn voordat het level gebouwd wordt:
+    // ovens en schoorstenen hangen er hun pluim aan op.
+    this.deeltjes = new Deeltjes(this.scene);
+    this.speler.deeltjes = this.deeltjes;
+    this.cupcaek.deeltjes = this.deeltjes;
 
     this.scopeCreep = new ScopeCreep();
     this.scopeCreep.hoogsteGroei = 0;
@@ -151,6 +160,8 @@ class Spel {
   geefValue(punten, label) {
     this.value = Math.min(this.value + punten, WAARDE.plafond);
     this.hud.plusValue(punten);
+    this.deeltjes?.vonken(this.speler.positie.x, this.speler.positie.y + 1.6, this.speler.positie.z,
+      Math.min(20, 6 + punten));
     if (label) this.hud.kaart(label, `Value +${punten}`, 1700);
     this.geluid.waarde();
   }
@@ -317,6 +328,7 @@ class Spel {
       this.werkCameraBij(dt);
     }
 
+    this.deeltjes.update(dt);
     this.schilder.render(this.scene, this.camera, this.klok);
     this.invoer.spoel();
     this.meetPrestatie(dt);

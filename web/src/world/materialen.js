@@ -105,6 +105,63 @@ export function maskeerEigen(object, sterkte = 0.12) {
   return object;
 }
 
+/**
+ * Een zachte ronde vlek: wit in het midden, doorzichtig aan de rand.
+ *
+ * Het werkpaard van alle sfeer die niet uit geometrie komt. Additief gebruikt
+ * is het de gloed uit een ovenmond of het halo om een lantaarn; met de kleur
+ * op zwart en normaal gemengd is het de contactschaduw onder een figuur.
+ * Eén textuur, en hij wordt door alles gedeeld.
+ */
+let vlekCache = null;
+export function vlekTextuur(maat = 128) {
+  if (vlekCache) return vlekCache;
+  const canvas = document.createElement('canvas');
+  canvas.width = canvas.height = maat;
+  const c = canvas.getContext('2d');
+  const g = c.createRadialGradient(maat / 2, maat / 2, 0, maat / 2, maat / 2, maat / 2);
+  // niet lineair: een lineaire gradiënt leest als een cirkel met een rand,
+  // deze loopt echt dood
+  g.addColorStop(0.0, 'rgba(255,255,255,1)');
+  g.addColorStop(0.35, 'rgba(255,255,255,.72)');
+  g.addColorStop(0.68, 'rgba(255,255,255,.22)');
+  g.addColorStop(1.0, 'rgba(255,255,255,0)');
+  c.fillStyle = g;
+  c.fillRect(0, 0, maat, maat);
+  vlekCache = new THREE.CanvasTexture(canvas);
+  vlekCache.colorSpace = THREE.SRGBColorSpace;
+  return vlekCache;
+}
+
+/**
+ * Mengen zonder het verfmasker te slopen.
+ *
+ * Het alfakanaal van de scene doet dubbel werk: het is de blendfactor én de
+ * kaart die zegt hoeveel olieverf er overheen mag. Zet een transparant object
+ * daar zijn eigen alfa in, dan verandert hij ongemerkt hoe hard de filter op
+ * alles achter hem slaat. Dus: kleur wél mengen, alfa met rust laten.
+ *
+ * `soort` is 'op' (additief, voor licht) of 'onder' (vermenigvuldigend, voor
+ * schaduw).
+ */
+export function meng(materiaal, soort = 'op') {
+  materiaal.transparent = true;
+  materiaal.depthWrite = false;
+  materiaal.blending = THREE.CustomBlending;
+  materiaal.blendEquation = THREE.AddEquation;
+  if (soort === 'onder') {
+    materiaal.blendSrc = THREE.ZeroFactor;
+    materiaal.blendDst = THREE.OneMinusSrcAlphaFactor;
+  } else {
+    materiaal.blendSrc = THREE.SrcAlphaFactor;
+    materiaal.blendDst = THREE.OneFactor;
+  }
+  materiaal.blendEquationAlpha = THREE.AddEquation;
+  materiaal.blendSrcAlpha = THREE.ZeroFactor;
+  materiaal.blendDstAlpha = THREE.OneFactor;
+  return materiaal;
+}
+
 /** Lichtgevend materiaal voor ovengloed, gouden lijnen en energie. */
 export function gloed(kleur, sterkte = 1) {
   const sleutel = `gloed|${kleur}|${sterkte}`;

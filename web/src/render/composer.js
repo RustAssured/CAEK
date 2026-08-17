@@ -8,17 +8,17 @@
 import * as THREE from 'three';
 import {
   quadVertex, luchtFragment, tensorFragment, blurFragment,
-  kuwaharaFragment, finaleFragment,
+  kuwaharaFragment, finaleFragment, helderFragment, waasFragment,
 } from './shaders.js';
 import { Streken } from './streken.js';
 
 /** Voorinstellingen. `renderSchaal` is verreweg de grootste knop op snelheid.
  *  `streken` zet de geometrie-penselen aan; die kosten vooral fillrate. */
 export const KWALITEIT = {
-  hoog:   { renderSchaal: 0.80, straal: 4.2, licStappen: 0, impasto: 1.35, tensorDeling: 2, streken: true, strekenDeel: 1.0, dpr: 1.5 },
-  midden: { renderSchaal: 0.68, straal: 3.2, licStappen: 0, impasto: 1.10, tensorDeling: 2, streken: true, strekenDeel: 0.6, dpr: 1.25 },
-  laag:   { renderSchaal: 0.58, straal: 2.6, licStappen: 4, impasto: 0.50, tensorDeling: 3, streken: false, strekenDeel: 0, dpr: 1.0 },
-  uit:    { renderSchaal: 1.00, straal: 0.0, licStappen: 0, impasto: 0.00, tensorDeling: 4, streken: false, strekenDeel: 0, dpr: 1.0 },
+  hoog:   { renderSchaal: 0.95, straal: 4.2, licStappen: 0, impasto: 1.35, tensorDeling: 2, streken: true, strekenDeel: 1.0, dpr: 1.6, bloei: 1.0 },
+  midden: { renderSchaal: 0.80, straal: 3.2, licStappen: 0, impasto: 1.10, tensorDeling: 2, streken: true, strekenDeel: 0.6, dpr: 1.35, bloei: 0.8 },
+  laag:   { renderSchaal: 0.62, straal: 2.6, licStappen: 4, impasto: 0.50, tensorDeling: 3, streken: false, strekenDeel: 0, dpr: 1.0, bloei: 0 },
+  uit:    { renderSchaal: 1.00, straal: 0.0, licStappen: 0, impasto: 0.00, tensorDeling: 4, streken: false, strekenDeel: 0, dpr: 1.0, bloei: 0 },
 };
 
 /* Hoe hard er geschilderd wordt, per diepte.
@@ -28,15 +28,33 @@ export const KWALITEIT = {
  * maat voor "hoeveel verf mag hier overheen": vlakbij bijna niets, achterin
  * het volle werk. Dat leest ook als lucht -- verte is waziger dan dichtbij.
  *
+ * De bodem stond lang op 0,45 omdat de wereld toen uit gekleurde blokjes
+ * bestond en de filter het schilderij máákte. Sinds alles op het spelvlak
+ * geschilderd wórdt aangeleverd -- de sprites, de vloer, de kraampjes, de
+ * platen -- doet diezelfde filter het omgekeerde: hij smeert penseelwerk uit
+ * dat er al ligt. Dus staat de bodem nu vrijwel op nul. Voorgrond scherp,
+ * achtergrond geschilderd, en de keten blijft heel omdat SuperCaeks
+ * comicmodus er doorheen loopt.
+ *
  * De uitzondering zit in het alfakanaal: materialen mogen een eigen sterkte
- * meegeven (zie MASKER in world/materialen.js), en de karakters zetten die
- * bijna op nul. Anders verdwijnt Caeks gezicht in de verf. */
+ * meegeven (zie maskeer() in world/materialen.js). */
 export const DIEPTE = {
-  nabij: 12.0,   // hier begint het masker; alles ervoor krijgt `bodem`
-  ver: 42.0,     // hier is de filter op volle sterkte
-  bodem: 0.45,   // minimale sterkte op het spelvlak -- niet nul, wel bescheiden:
-                 // op nul wordt de vloer een vlakke plaat en valt hij uit de
-                 // schilderij. Karakters en tekst hebben hun eigen masker.
+  nabij: 17.0,   // hier begint het masker; alles ervoor krijgt `bodem`
+  ver: 40.0,     // hier is de filter op volle sterkte
+  bodem: 0.05,   // vrijwel niets op het spelvlak; net genoeg dat de overgang
+                 // naar het geschilderde decor erachter niet als een naad leest
+};
+
+/* Bloei — wat licht geeft, geeft ook licht áf.
+ *
+ * `drempel` is in lineaire ruimte, dus vóór de filmcurve. Gewone geverfde
+ * vlakken blijven daaronder; ovenvuur, gouden ringen en vonken gaan eroverheen.
+ * `deling` is hoeveel kleiner de bloeibuffer is dan het beeld -- op een kwart
+ * kost de hele pass ongeveer niets en is de halo juist mooi breed. */
+export const BLOEI = {
+  drempel: 0.72,
+  sterkte: 0.55,
+  deling: 4,
 };
 
 /** Vaste stijlparameters — hieraan draaien is het leukste deel van het werk.
@@ -140,6 +158,9 @@ export class Schilder {
     this.rtT1 = maakDoel(1, 1, this.type);
     this.rtT2 = maakDoel(1, 1, this.type);
     this.rtVerf = maakDoel(1, 1, this.type);
+    // bloei op een kwart: breed en goedkoop, en juist bij gloed is grof beter
+    this.rtBloei0 = maakDoel(1, 1, this.type);
+    this.rtBloei1 = maakDoel(1, 1, this.type);
 
     this.lucht = maakQuad(luchtFragment, {
       uTijd: { value: 0 },
@@ -189,6 +210,19 @@ export class Schilder {
       uDiepte: { value: null },
       uCam: { value: new THREE.Vector2(0.5, 300) },
       uMasker: { value: new THREE.Vector3(DIEPTE.nabij, DIEPTE.ver, DIEPTE.bodem) },
+      uBloei: { value: null },
+      uBloeiSterkte: { value: BLOEI.sterkte },
+    });
+
+    this.helder = maakQuad(helderFragment, {
+      uBron: { value: null },
+      uPixel: { value: new THREE.Vector2() },
+      uDrempel: { value: BLOEI.drempel },
+    });
+
+    this.waas = maakQuad(waasFragment, {
+      uBron: { value: null },
+      uRichting: { value: new THREE.Vector2() },
     });
 
     this.streken = new Streken(renderer, STIJL.streken);
@@ -206,6 +240,8 @@ export class Schilder {
     this.finale.materiaal.uniforms.uLic.value = p.licStappen;
     this.finale.materiaal.uniforms.uImpasto.value = p.impasto;
     this.strekenAan = p.streken !== false;
+    this.bloeiDeel = p.bloei ?? 0;
+    this.finale.materiaal.uniforms.uBloeiSterkte.value = BLOEI.sterkte * this.bloeiDeel;
     this.streken?.zetDeel(p.strekenDeel ?? 1);
     this.pasMaatAan(this.cssBreedte || 1, this.cssHoogte || 1, true);
   }
@@ -226,6 +262,12 @@ export class Schilder {
     this.rtScene.depthTexture.image.width = b;
     this.rtScene.depthTexture.image.height = h;
     this.rtVerf.setSize(b, h);
+    const bb = Math.max(2, Math.round(b / BLOEI.deling));
+    const bh = Math.max(2, Math.round(h / BLOEI.deling));
+    this.rtBloei0.setSize(bb, bh);
+    this.rtBloei1.setSize(bb, bh);
+    this.bloeiPixel = new THREE.Vector2(1 / bb, 1 / bh);
+    this.helder.materiaal.uniforms.uPixel.value.set(1 / b, 1 / h);
 
     const tb = Math.max(2, Math.round(b / p.tensorDeling));
     const th = Math.max(2, Math.round(h / p.tensorDeling));
@@ -251,6 +293,35 @@ export class Schilder {
   zetFlits(v) {
     this.flits = v;
     this.finale.materiaal.uniforms.uFlits.value = v;
+  }
+
+  /**
+   * Bloei: helderheid eruit trekken en breed uitsmeren.
+   *
+   * Uit rtScene en niet uit het geverfde beeld, met opzet. De scene is waar
+   * het licht echt vandaan komt -- emissieve materialen, additieve vonken, de
+   * gloed in een ovenmond -- en die waardes staan daar nog boven één. Na de
+   * filmcurve is alles al platgedrukt en valt er niets meer te oogsten.
+   */
+  #bloei() {
+    if (!(this.bloeiDeel > 0)) {
+      this.finale.materiaal.uniforms.uBloei.value = null;
+      this.finale.materiaal.uniforms.uBloeiSterkte.value = 0;
+      return;
+    }
+    this.helder.materiaal.uniforms.uBron.value = this.rtScene.texture;
+    this.#teken(this.helder, this.rtBloei0);
+
+    this.waas.materiaal.uniforms.uBron.value = this.rtBloei0.texture;
+    this.waas.materiaal.uniforms.uRichting.value.set(this.bloeiPixel.x, 0);
+    this.#teken(this.waas, this.rtBloei1);
+
+    this.waas.materiaal.uniforms.uBron.value = this.rtBloei1.texture;
+    this.waas.materiaal.uniforms.uRichting.value.set(0, this.bloeiPixel.y);
+    this.#teken(this.waas, this.rtBloei0);
+
+    this.finale.materiaal.uniforms.uBloei.value = this.rtBloei0.texture;
+    this.finale.materiaal.uniforms.uBloeiSterkte.value = BLOEI.sterkte * this.bloeiDeel;
   }
 
   #teken(quad, doel) {
@@ -283,6 +354,8 @@ export class Schilder {
     r.render(this.lucht.scene, this.quadCamera);
     r.render(scene, camera);
     r.autoClear = wasAutoClear;
+
+    this.#bloei();
 
     if (this.kwaliteitNaam === 'uit') {
       this.finale.materiaal.uniforms.uVerf.value = this.rtScene.texture;
@@ -370,7 +443,7 @@ export class Schilder {
 
   dispose() {
     this.streken.dispose();
-    for (const rt of [this.rtScene, this.rtT0, this.rtT1, this.rtT2, this.rtVerf]) rt.dispose();
-    for (const q of [this.lucht, this.tensor, this.blur, this.kuwahara, this.finale]) q.materiaal.dispose();
+    for (const rt of [this.rtScene, this.rtT0, this.rtT1, this.rtT2, this.rtVerf, this.rtBloei0, this.rtBloei1]) rt.dispose();
+    for (const q of [this.lucht, this.tensor, this.blur, this.kuwahara, this.helder, this.waas, this.finale]) q.materiaal.dispose();
   }
 }

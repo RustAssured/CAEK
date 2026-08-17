@@ -8,7 +8,7 @@
 import * as THREE from 'three';
 import {
   props, PALET, verf, gloed, sectie, bauBand, impediment, technicalDebt,
-  kortOverleg, vraagsturen,
+  kortOverleg, vraagsturen, laatRoken,
 } from './gereedschap.js';
 import {
   INGREDIENTEN, METRICS, AFHANKELIJKHEDEN, SPOEDWERK, TEAMS, WAARDE, SCHAKELS,
@@ -126,8 +126,9 @@ export function bouwSprint1(level, spel) {
 
   const oventje = props.oven(0.55, { tekst: 'SPRINT 1' });
   level.plaats(oventje, x0 + 60, 0, -2.5);
+  laatRoken(level, oventje, 'sprint1oven');
   level.tik((dt, speler, sp) => {
-    oventje.userData.vuur.material = gloed(PALET.oranje, 1.1 + Math.sin(sp.klok * 2.6) * 0.4);
+    oventje.userData.gloeien(PALET.oranje, 1.1 + Math.sin(sp.klok * 2.6) * 0.4);
   });
 
   level.interactie({
@@ -385,15 +386,18 @@ export function bouwSprint3(level, spel) {
 
   /* ---------------- drie deuren, één data ---------------- */
 
+  // Zes eenheden uit elkaar en niet vier: de gemodelleerde poort is bijna net
+  // zo breed als hoog, en de linker staat ook nog eens op 1,4 keer. Op vier
+  // liepen ze in elkaar over en was niet meer te zien welke deur je koos.
   const deuren = [
-    { id: 'groot', tekst: ['MEER', 'BOUWEN'], x: x0 + 50, kleur: PALET.goud },
+    { id: 'groot', tekst: ['MEER', 'BOUWEN'], x: x0 + 48, kleur: PALET.goud },
     { id: 'klein', tekst: ['STAP 3', 'FIXEN'], x: x0 + 54, kleur: PALET.groen },
-    { id: 'dashboard', tekst: ['NOG EEN', 'DASHBOARD'], x: x0 + 58, kleur: PALET.paars },
+    { id: 'dashboard', tekst: ['NOG EEN', 'DASHBOARD'], x: x0 + 60, kleur: PALET.paars },
   ];
-  const muurBlok = level.voegMuur(x0 + 48, x0 + 59, 0, 8);
+  const muurBlok = level.voegMuur(x0 + 45, x0 + 62, 0, 8);
   for (const d of deuren) {
     const object = props.deur(d.tekst, 2.6, 5);
-    object.userData.blad.material = verf(d.kleur, { emissief: 0.2 });
+    object.userData.kleuren(d.kleur);
     level.plaats(object, d.x, 0, -1.4);
     d.object = object;
   }
@@ -421,7 +425,7 @@ export function bouwSprint3(level, spel) {
       );
       if (keuze === 'klein') {
         sp.geluid.waarde();
-        deuren[1].object.userData.blad.visible = false;
+        deuren[1].object.userData.open();
         muurBlok.x0 = -999;
         muurBlok.x1 = -999;
         sp.geefValue(WAARDE.metrics, 'METRICS GEBRUIKT');
@@ -481,7 +485,7 @@ export function bouwSprint4(level, spel) {
       sp.bevries(true);
       sp.vlaggen.publiekSlaapt = true;
       sp.cupcaek.gezicht('slaapt');
-      groot.userData.beeld.material = verf(PALET.room, { emissief: 0.9 });
+      groot.userData.projecteer(PALET.room, 0.9);
       for (let slide = 1; slide <= 83; slide += Math.ceil(slide / 3)) {
         sp.hud.kaart(`SLIDE ${slide} / 83`, 'agenda · context · aanpak · vervolg', 260);
         sp.geluid.klik();
@@ -513,7 +517,7 @@ export function bouwSprint4(level, spel) {
       powerpoint.klaar = true;
       sp.bevries(true);
       sp.vlaggen.publiekSlaapt = false;
-      groot.userData.beeld.material = verf(PALET.goudLicht, { emissief: 1.1 });
+      groot.userData.projecteer(PALET.goudLicht, 1.1);
       sp.geluid.waarde();
       await sp.dialoog.scene([
         ['verteller', 'Caek laat het daadwerkelijk gebouwde resultaat zien. Live. Eén klik.'],
