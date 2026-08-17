@@ -176,7 +176,22 @@ export function bouwReview(level, spel, { nummer, sectieId, taak, zaalBreedte, u
 
   /* ---------------- de uitgang ---------------- */
 
+  /* De uitgang zegt zelf waarom hij dicht is.
+   *
+   * Dit was de stilste doodlopende weg in het spel: je loopt tegen een muur,
+   * Cupcaek staat er stil naast, en niets vertelt je dat de review nog niet af
+   * is -- laat staan wát er nog mist. De opdrachten staan tientallen eenheden
+   * terug in de zaal, dus "gewoon rondkijken" is geen antwoord. */
   const uitgang = level.voegMuur(muurX, muurX + 1, 0, 7);
+  let laatsteHint = -99;
+  uitgang.geraakt = (speler) => {
+    const sp = spel;
+    if (sp.klok - laatsteHint < 4) return;
+    laatsteHint = sp.klok;
+    const rest = zaal.watMist ? zaal.watMist(sp) : [];
+    if (!rest.length) return;
+    sp.hud.kaart('DE REVIEW IS NOG NIET AF', rest.join(' · '), 3200);
+  };
   const hek = props.doos(0.6, 6.4, 5, PALET.steen, { plat: true });
   level.plaats(hek, muurX + 0.5, 3.2, -1);
   zaal.uitgang = uitgang;
@@ -246,6 +261,17 @@ export function taakReview1(level, spel, zaal) {
   const kijkTeam = TEAMS[3];
   const kijkPlek = zaal.standen.get(kijkTeam.naam);
 
+  zaal.watMist = (sp) => {
+    const rest = [];
+    if (!sp.vlaggen.gekeken1) rest.push(`kijk bij ${kijkTeam.naam}`);
+    if (!sp.vlaggen.gedeeld1) {
+      rest.push(sp.vlaggen.sprint1
+        ? 'zet je sprintresultaat op de demotafel'
+        : 'je hebt nog niets gebakken — terug naar de oven van sprint 1');
+    }
+    return rest;
+  };
+
   level.interactie({
     x: kijkPlek.x, y: kijkPlek.y + 1.6, straal: 3.6,
     label: `kijk bij ${kijkTeam.naam}`,
@@ -295,6 +321,12 @@ export function taakReview1(level, spel, zaal) {
 
 /** Review 2 — de drie teams uit de afhankelijkheid laten hun kant zien. */
 export function taakReview2(level, spel, zaal) {
+  zaal.watMist = (sp) => (sp.vlaggen.review2Klaar ? [] : [
+    sp.vlaggen.sprint2
+      ? 'laat de keten zien bij je eigen demotafel'
+      : 'de keten loopt nog niet rond — terug naar de drie schakelaars in sprint 2',
+  ]);
+
   level.interactie({
     x: zaal.eigenX, y: 1.6, straal: 3.4,
     label: 'laat de keten zien',
@@ -345,6 +377,12 @@ export function taakReview3(level, spel, zaal) {
   });
   level.platform(x0 + 13.5, 2.4, 3.0);
   level.platform(x0 + 22.5, 2.4, 3.0);
+
+  zaal.watMist = (sp) => (sp.vlaggen.review3Klaar ? [] : [
+    sp.sprinkles.length
+      ? 'verwerk de juiste feedback bij je eigen demotafel'
+      : 'je hebt nog geen feedback opgehaald — die ligt verspreid in sprint 3',
+  ]);
 
   level.interactie({
     x: zaal.eigenX, y: 1.6, straal: 3.4, eenmalig: false,

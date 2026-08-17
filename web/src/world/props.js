@@ -182,6 +182,39 @@ function houtenKrat(breedte, dikte) {
 }
 
 /**
+ * Een rij echte kratten, precies zo breed als het platform.
+ *
+ * Eén model uitrekken tot de goede breedte zou de ijzeren banden en de klinken
+ * meerekken, en dat zie je meteen. Dus wordt er geteld hoeveel kratten er in
+ * passen en worden ze naast elkaar gezet; wat er dan nog aan afwijking
+ * overblijft is hooguit een paar procent in de breedte.
+ *
+ * Twee kratten naast elkaar is trouwens ook gewoon wat een bakkerij doet, dus
+ * het leest beter dan één uitgerekt exemplaar.
+ */
+function geknipteKratten(breedte) {
+  const groep = new THREE.Group();
+  const m = MODEL.krat;
+  const aantal = Math.max(1, Math.round(breedte / m.breedte));
+  const stuk = breedte / aantal;
+  const rek = stuk / m.breedte;
+
+  for (let i = 0; i < aantal; i++) {
+    const krat = m.wortel.clone();
+    krat.scale.x *= rek;
+    krat.position.x = -breedte / 2 + stuk * (i + 0.5);
+    // Het model staat op y = 0 met zijn voet; hier hangt het platform aan zijn
+    // bovenkant, dus zakt het geheel zijn eigen hoogte omlaag. En naar achteren
+    // tot het voorvlak nét achter het spelvlak ligt -- anders loopt de speler
+    // onder een laag platform door met zijn hoofd in het krat.
+    krat.position.y = -m.hoogte;
+    krat.position.z = KRAT.MIDDEN;
+    groep.add(krat);
+  }
+  return groep;
+}
+
+/**
  * Een looppad. Geeft de mesh terug; de collider maakt level.js zelf.
  *
  * Met de geschilderde plaat is dit één staand vlak in plaats van een stapel
@@ -264,6 +297,7 @@ export function platform(breedte, dikte = 0.9, kleur = PALET.steen, { top = PALE
   // geen platte plaat. Dat is het verschil tussen een sticker en iets waar je
   // omheen kunt kijken: als de camera meepant schuift het zijvlak weg en
   // onthult het bovenvlak zich. Precies die parallax is de 2.5D-diepte.
+  if (zwevend && MODEL.krat) return geknipteKratten(breedte);
   if (zwevend && TEX.hout) return houtenKrat(breedte, dikte);
   if (!zwevend && TEX.vloer_boven && TEX.vloer_rand) return geschilderdeStraat(breedte);
   const plaat = zwevend ? (TEX.springblok || TEX.vloer) : TEX.vloer;
@@ -947,8 +981,35 @@ export function podium(breedte = 8) {
  * dat het licht van een lamp lijkt te komen en niet van een LED.
  */
 export function scherm(breedte = 9, hoogte = 5) {
+  if (MODEL.scherm) return gemodelleerdScherm(hoogte);
   if (TEX.scherm) return geschilderdScherm(hoogte);
   return gebouwdScherm(breedte, hoogte);
+}
+
+function gemodelleerdScherm(hoogte) {
+  const groep = new THREE.Group();
+  const m = MODEL.scherm;
+  const bord = m.wortel.clone();
+  bord.scale.multiplyScalar(hoogte / m.hoogte);
+  groep.add(bord);
+  const schaal = hoogte / m.hoogte;
+
+  // De projectie is licht op het doek, niet een vlak eroverheen: het doek is
+  // al crème geschilderd en een dekkende rechthoek zou dat penseelwerk wegvagen.
+  const straalMat = meng(new THREE.MeshBasicMaterial({ color: PALET.room, toneMapped: false }));
+  straalMat.opacity = 0;
+  const beeld = vlak(m.breedte * schaal * 0.78, m.hoogte * schaal * 0.58, straalMat);
+  beeld.position.set(0, m.hoogte * schaal * 0.62, m.diepte * schaal * 0.6);
+  beeld.renderOrder = 3;
+  groep.add(beeld);
+
+  groep.userData.hoogte = m.hoogte * schaal;
+  groep.userData.beeld = beeld;
+  groep.userData.projecteer = (kleur, sterkte) => {
+    straalMat.color.set(kleur);
+    straalMat.opacity = Math.max(0, sterkte * 0.6);
+  };
+  return groep;
 }
 
 function geschilderdScherm(hoogte) {

@@ -49,6 +49,14 @@ export function bouwSprint1(level, spel) {
     'techniek', 'portaal', 'business', 'rapport', 'data',
     'knop', 'samenwerking', 'migratie', 'gebruikers',
   ];
+  /* Waar elk ingrediënt lag, zodat het terug kan.
+   *
+   * Cupcaek zegt bij een mislukte bak "Ga terug, ze liggen er nog" -- en dat
+   * moet dan ook waar zijn. Gooide je bij het sorteren per ongeluk iets weg
+   * dat je nodig had, dan was het eerst voorgoed verdwenen en kon sprint 1
+   * niet meer afgemaakt worden. Dat is geen les, dat is een doodlopende weg. */
+  const liggen = new Map();
+
   volgorde.forEach((id, i) => {
     const ing = INGREDIENTEN.find((n) => n.id === id);
     const [x, y] = posities[i];
@@ -59,13 +67,14 @@ export function bouwSprint1(level, spel) {
       object.rotation.y += dt * 1.1;
       object.userData.halo.rotation.x += dt * 2;
     });
-    level.pickup({
+    const oppakken = level.pickup({
       x, y, straal: 1.5,
       doe(sp) {
         object.visible = false;
         sp.pakIngredient(ing);
       },
     });
+    liggen.set(ing.id, { object, oppakken });
   });
 
   level.platform(x0 + 12, 4.0, 3.0);
@@ -102,9 +111,17 @@ export function bouwSprint1(level, spel) {
       sp.mand = sp.mand.filter((i) => !gekozen.has(i.id));
       sp.hud.zetTeller('mand', sp.mand.length);
 
+      // alles wat eruit gaat komt terug te liggen waar je het vond
+      for (const weg of eruit) {
+        const plek = liggen.get(weg.id);
+        if (!plek) continue;
+        plek.object.visible = true;
+        plek.oppakken.klaar = false;
+      }
+
       if (foutWeg.length) {
         sp.geluid.fout();
-        await sp.dialoog.zeg('cupcaek', `Je hebt ${foutWeg[0].naam} weggegooid. Die hadden we juist nodig.`);
+        await sp.dialoog.zeg('cupcaek', `Je hebt ${foutWeg[0].naam} weggegooid. Die hadden we juist nodig — hij ligt weer waar je hem vond.`);
       }
       if (goedWeg.length) {
         sp.geluid.waarde();

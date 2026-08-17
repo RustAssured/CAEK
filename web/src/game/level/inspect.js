@@ -171,6 +171,14 @@ export function taakInspect(level, spel, zaal) {
     sp.hud.kaart('INSPECT & ADAPT', 'twee dingen bekijken, dan de PI sluiten', 3000);
   });
 
+  zaal.watMist = (sp) => {
+    if (sp.vlaggen.iaKlaar) return [];
+    const rest = [];
+    if (!sp.vlaggen.wielVol) rest.push('hang de laatste teamdoelen aan het wiel');
+    if (!sp.vlaggen.actualBekeken) rest.push('leg de Actual Value naast de belofte');
+    return rest;
+  };
+
   function probeerSluiten(sp) {
     if (!sp.vlaggen.actualBekeken || !sp.vlaggen.wielVol || sp.vlaggen.iaKlaar) return;
     sp.vlaggen.iaKlaar = true;

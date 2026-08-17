@@ -63,6 +63,8 @@ function decor(level, spel) {
   for (let i = merk; i < level.scene.children.length; i++) terugval.push(level.scene.children[i]);
 
   zetAchtergrond(level.scene, level).then((gelukt) => {
+    // vlaggetje voor de testharnassen: pas hierna is het beeld het echte beeld
+    spel.decorKlaar = true;
     if (!gelukt) return;
     for (const o of terugval) o.removeFromParent();
     // de lantaarnpalen langs de weg blijven wel: die staan vóór het spelvlak

@@ -31,6 +31,12 @@ const MODELLEN = {
   // eenheden van elkaar. Dus is de hoogte hier ondergeschikt aan de breedte;
   // zie sprints.js, waar de drie deuren ook uit elkaar zijn getrokken.
   deur: { bestand: 'deur3d.glb', hoogte: 4.4, masker: 0.12 },
+  scherm: { bestand: 'scherm3d.glb', hoogte: 5.2, masker: 0.12 },
+  // Het krat is breed en laag, en er staan er vijftig in het spel op alle
+  // mogelijke breedtes. Zie geknipteKratten() in props.js: die legt er zoveel
+  // naast elkaar als er passen in plaats van er één uit te rekken, want dan
+  // zouden de ijzeren banden meerekken en dat zie je meteen.
+  krat: { bestand: 'springkrat.glb', hoogte: 1.25, masker: 0.10 },
 };
 
 const lader = new GLTFLoader();
