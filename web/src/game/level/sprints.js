@@ -148,35 +148,49 @@ export function bouwSprint1(level, spel) {
     oventje.userData.gloeien(PALET.oranje, 1.1 + Math.sin(sp.klok * 2.6) * 0.4);
   });
 
+  /* De oven bakt altijd.
+   *
+   * Hij deed dat eerst niet: had je te weinig van de juiste ingrediënten, of
+   * zat er nog rommel in je mand, dan weigerde hij en stond je stil. Dat was
+   * de dodelijkste plek in het spel -- je kreeg een zin te horen, er gebeurde
+   * niets, en het antwoord lag vijftig eenheden terug.
+   *
+   * En het is ook nog eens de verkeerde les. "Je mag pas bakken als je perfect
+   * gesorteerd hebt" is niet waar dit spel over gaat. Waar het over gaat is
+   * dat álles erin gooien óók iets oplevert, alleen veel minder. Dus komt er
+   * altijd iets uit de oven, en wat je meebracht bepaalt wát. */
   level.interactie({
     x: x0 + 60, y: 1.5, straal: 3.4,
     label: 'bak het sprintresultaat',
     async doe(sp) {
       const nodig = sp.mand.filter((i) => i.nodig).length;
-      if (nodig < 3) {
-        await sp.dialoog.scene([
-          ['cupcaek', `Met ${nodig} van de vijf ingrediënten wordt dit geen werkende basis.`],
-          ['cupcaek', 'Ga terug. Ze liggen er nog.'],
-        ]);
-        return;
-      }
-      if (sp.mand.some((i) => !i.nodig)) {
-        await sp.dialoog.scene([
-          ['caek', 'Ik gooi er gewoon alles in.'],
-          ['cupcaek', 'Dan bak je alles behalve het sprintdoel. Eerst sorteren, bij het bord.'],
-        ]);
-        return;
-      }
+      const rommel = sp.mand.filter((i) => !i.nodig).length;
+      const schoon = nodig >= 3 && rommel === 0;
+
       sp.geluid.ping();
       await sp.dialoog.zeg('verteller', 'PING.', { wacht: 0.9 });
-      const taart = props.taartje(PALET.goud);
+      const taart = props.taartje(schoon ? PALET.goud : PALET.toast);
+      if (!schoon) taart.scale.set(0.8, 0.7, 0.8);
       level.plaats(taart, x0 + 62.5, 0, 0.9);
-      sp.geefValue(WAARDE.sprintdoel, 'SPRINTDOEL BEHAALD');
       sp.rondSprintAf(1);
-      await sp.dialoog.scene([
-        ['verteller', 'Er komt een mini-CAEK uit. Niet perfect. Wel bruikbaar.'],
-        ['cupcaek', 'Bruikbaar is een compliment.'],
-      ]);
+
+      if (schoon) {
+        sp.geefValue(WAARDE.sprintdoel, 'SPRINTDOEL BEHAALD');
+        await sp.dialoog.scene([
+          ['verteller', 'Er komt een mini-CAEK uit. Niet perfect. Wel bruikbaar.'],
+          ['cupcaek', 'Bruikbaar is een compliment.'],
+        ]);
+        return;
+      }
+
+      // Het halve punt in plaats van het hele: er ligt iets, maar niet wat er
+      // beloofd was. Precies de boodschap van het spel, en zonder muur.
+      sp.geefValue(Math.round(WAARDE.sprintdoel / 2), 'ER LIGT IETS');
+      const regels = [['verteller', 'Er komt iets uit de oven. Het is warm en het is klaar.']];
+      if (rommel) regels.push(['cupcaek', `Er zat ${rommel}× werk in dat niet aan het sprintdoel bijdroeg. Dat proef je.`]);
+      if (nodig < 3) regels.push(['cupcaek', `En ${nodig} van de vijf ingrediënten is wat mager voor een werkende basis.`]);
+      regels.push(['cupcaek', 'Het telt. Alleen: half zoveel. Bij het bord terug kun je sorteren en het opnieuw proberen.']);
+      await sp.dialoog.scene(regels);
     },
   });
 
@@ -492,8 +506,8 @@ export function bouwSprint4(level, spel) {
 
   const knopA = props.knopZuil('POWERPOINT', PALET.rood);
   const knopB = props.knopZuil('LAAT HET ZIEN', PALET.groen);
-  level.plaats(knopA, x0 + 11, 1.34, 1.2);
-  level.plaats(knopB, x0 + 17, 1.34, 1.2);
+  level.plaats(knopA, x0 + 11, 1.34, 0.5);
+  level.plaats(knopB, x0 + 17, 1.34, 0.5);
 
   const powerpoint = level.interactie({
     x: x0 + 11, y: 2.6, straal: 2.6,
@@ -594,7 +608,7 @@ function bouwWachttunnel(level, x) {
   const poortMuur = level.voegMuur(x - 5, x + 5, 0, 6);
 
   const knop = props.knopZuil('KAN HET SNELLER?', PALET.rood);
-  level.plaats(knop, x - 8, 0, 1.6);
+  level.plaats(knop, x - 8, 0, 0.5);
 
   let rammen = 0;
   let open = false;
@@ -654,7 +668,7 @@ function bouwWachttunnel(level, x) {
 function strooiHartjes(level, x, aantal = 12) {
   for (let i = 0; i < aantal; i++) {
     const hartje = props.label('♥', { breedte: 0.9, kleur: '#f2799f', grootte: 90 });
-    hartje.position.set(x + Math.random() * 12, 2 + Math.random() * 2, 3 + Math.random() * 2);
+    hartje.position.set(x + Math.random() * 12, 2 + Math.random() * 2, -1 + Math.random() * 2);
     level.scene.add(hartje);
     hartje.material.transparent = true;
     let leeftijd = 0;

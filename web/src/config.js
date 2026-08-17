@@ -353,6 +353,15 @@ export const ACHTERGROND = {
      * strook in beeld staat, gemeten vanaf de onderrand van het scherm; op deze
      * afstand is een vaste wereldhoogte zinloos omdat het beeldvlak veel
      * kleiner is. */
-    { id: 'voorgrond', z: 3.2, factor: 1.30, hoogteDeel: 0.22, zit: 0.26, voor: true },
+    /* De voorgrondstrook staat uit.
+     *
+     * Het idee klopt -- een laag die sneller langs schuift verkoopt diepte
+     * voor één quad -- maar de strook was uit de onderrand van `dichtbij`
+     * gesneden, en dan herhaalt hij zichtbaar mét die laag en zit hij bovendien
+     * voor de karakters langs. Meer storing dan diepte.
+     *
+     * De machinerie blijft staan: zodra er een eigen `voorgrond.png` is (zie
+     * PROMPTS.md) hoeft alleen deze regel terug. */
+    // { id: 'voorgrond', z: 3.2, factor: 1.30, hoogteDeel: 0.22, zit: 0.26, voor: true },
   ],
 };

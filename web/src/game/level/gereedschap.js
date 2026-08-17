@@ -76,12 +76,12 @@ export function zetPubliek(level, { x, aantal = 14, breedte = 26, z = 4.0, label
     ? geschilderdPubliek(level, x, breedte, z)
     : bollenPubliek(level, x, aantal, breedte, z);
 
-  if (label) {
-    // Klein en aan de kant. Een banner van negen meter vlak voor de camera
-    // dekt de halve zaal af, en juist die zaal is het punt.
-    const bordje = props.label(label, { breedte: 5.4, grootte: 44, plaat: true });
-    level.plaats(bordje, x - breedte / 2 - 1.5, 2.6, z + 1.2);
-  }
+  /* Het bordje bij het publiek is weg.
+   *
+   * Het stond op z = 6, dus vlak voor de lens, en werd daardoor een blauw vlak
+   * van een halve schermbreedte dat met je meeschoof. Het vertelde bovendien
+   * iets wat de zaal zelf al zegt: er zit publiek. Weg ermee -- `label` blijft
+   * als parameter staan zodat aanroepers niet hoeven te veranderen. */
   return hoofden;
 }
 
@@ -152,7 +152,7 @@ function bollenPubliek(level, x, aantal, breedte, z) {
 export function bauBand(level, x, { lengte = 16, hoogte = 5.6 } = {}) {
   const band = props.lopendeBand(lengte);
   level.plaats(band, x + lengte / 2, hoogte, -1);
-  level.plaats(props.bord('BAU', { breedte: 2.2, hoogte: 1.2, grootte: 64 }), x - 2, hoogte - 1.2, 1.4);
+  level.plaats(props.bord('BAU', { breedte: 2.2, hoogte: 1.2, grootte: 64 }), x - 2, hoogte - 1.2, -1.6);
 
   const broodjes = [];
   for (let i = 0; i < Math.round(lengte / 2.4); i++) {

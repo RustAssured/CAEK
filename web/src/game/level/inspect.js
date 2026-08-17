@@ -34,8 +34,8 @@ export function taakInspect(level, spel, zaal) {
   geleverd.position.set(balkenX + 1.4, 0.1, 2.2);
   level.scene.add(geleverd);
 
-  level.plaats(props.label('BELOOFD', { breedte: 2.6, grootte: 48, plaat: true }), balkenX - 1.4, 6.8, 2.2);
-  level.plaats(props.label('GELEVERD', { breedte: 2.6, grootte: 48, plaat: true }), balkenX + 1.4, 6.8, 2.2);
+  level.plaats(props.label('BELOOFD', { breedte: 2.6, grootte: 48, plaat: true }), balkenX - 1.4, 6.8, 0.2);
+  level.plaats(props.label('GELEVERD', { breedte: 2.6, grootte: 48, plaat: true }), balkenX + 1.4, 6.8, 0.2);
 
   level.interactie({
     x: balkenX, y: 1.6, straal: 3.6,
