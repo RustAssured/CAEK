@@ -171,8 +171,16 @@ export function gloed(kleur, sterkte = 1) {
   return m;
 }
 
-/** Canvas met dikke letters -> textuur. Post-processing smeert alles uit, dus
- *  liever te groot en te veel contrast dan te netjes. */
+/** Hoe donker is deze kleur? Bepaalt of de contour licht of donker moet. */
+function isDonker(hex) {
+  const h = String(hex).replace('#', '');
+  if (h.length < 6) return false;
+  const r = parseInt(h.slice(0, 2), 16), g = parseInt(h.slice(2, 4), 16), b = parseInt(h.slice(4, 6), 16);
+  return (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255 < 0.5;
+}
+
+/** Canvas met dikke letters -> textuur. Liever te groot en te veel contrast
+ *  dan te netjes: dit wordt op afstand gelezen, in een donkere scène. */
 export function tekstTextuur(regels, {
   breedte = 512, hoogte = 256, achtergrond = '#0b1640', kleur = '#fdf3d8',
   rand = '#f5b229', grootte = 64, randDikte = 10,
@@ -200,7 +208,10 @@ export function tekstTextuur(regels, {
   lijst.forEach((regel, i) => {
     c.font = `900 ${grootte}px "Arial Black", Impact, sans-serif`;
     c.fillStyle = kleur;
-    c.strokeStyle = 'rgba(11,22,64,.85)';
+    // De contour hoort tegen de letter af te steken, niet ermee samen te
+    // vallen. Donkerblauwe letters kregen een donkerblauwe rand en werden
+    // daardoor één dikke veeg -- precies wat "vage tekst" er is.
+    c.strokeStyle = isDonker(kleur) ? 'rgba(253,243,216,.9)' : 'rgba(11,22,64,.85)';
     c.lineWidth = grootte * 0.14;
     c.lineJoin = 'round';
     c.strokeText(regel, breedte / 2, start + i * regelhoogte);

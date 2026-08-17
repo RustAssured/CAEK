@@ -80,9 +80,9 @@ export function bouwPlanning(level, spel) {
   const risicos = ['te weinig tijd', 'twee keer hetzelfde', 'niemand beschikbaar', 'het staat niet in de keten'];
   risicos.forEach((tekst, i) => {
     const kaart = props.doos(2.0, 1.2, 0.1, [PALET.rood, PALET.oranje, PALET.goud, PALET.roze][i], { emissief: 0.4 });
-    level.plaats(kaart, x0 + 24 + i * 2.2, 3.6 + (i % 2) * 1.2, 1.9);
+    level.plaats(kaart, x0 + 24 + i * 2.2, 4.4 + (i % 2) * 1.3, -3.3);
     const label = props.label(tekst, { breedte: 2.1, grootte: 42, kleur: '#0b1640' });
-    level.plaats(label, x0 + 24 + i * 2.2, 3.6 + (i % 2) * 1.2, 2.0);
+    level.plaats(label, x0 + 24 + i * 2.2, 4.4 + (i % 2) * 1.3, -3.2);
   });
 
   level.interactie({
