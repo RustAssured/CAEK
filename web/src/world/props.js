@@ -961,6 +961,45 @@ function gebouwdeDemotafel(kleur) {
   return groep;
 }
 
+/**
+ * Een dichte poort: waar je nog niet langs mag.
+ *
+ * Stond er eerst als een egale blauwe doos, en dat viel juist op de vier
+ * plekken waar je er minutenlang naar staat te kijken. Nu dezelfde planken en
+ * ijzeren banden als de kratten, met een gouden balk erover: je leest meteen
+ * dat het dicht is en waarom, en het hoort bij de rest van de wereld.
+ */
+export function poort(breedte = 1.0, hoogte = 6.4, diepte = 5) {
+  const groep = new THREE.Group();
+
+  const romp = TEX.hout
+    ? new THREE.Mesh(new THREE.BoxGeometry(breedte, hoogte, diepte),
+      new THREE.MeshLambertMaterial({ map: houtVlak(breedte, hoogte, diepte), color: 0xb99468 }))
+    : doos(breedte, hoogte, diepte, PALET.korst, { plat: true });
+  groep.add(romp);
+
+  // twee ijzeren banden en een gouden grendel: het teken dat er nog iets moet
+  for (const y of [hoogte * 0.28, hoogte * -0.24]) {
+    const band = doos(breedte + 0.14, 0.34, diepte + 0.14, PALET.blauwDiep, { emissief: 0.1 });
+    band.position.y = y;
+    groep.add(band);
+  }
+  const grendel = doos(breedte + 0.2, 0.22, diepte * 0.4, PALET.goud, { emissief: 0.55 });
+  grendel.position.y = hoogte * 0.04;
+  groep.add(grendel);
+  return groep;
+}
+
+/* De houttegel op maat voor één doos: per vlak geschaald, zodat de nerf overal
+ * even groot blijft. Zie ook houtenKrat(). */
+function houtVlak(breedte, hoogte, diepte) {
+  const t = TEX.hout.clone();
+  t.needsUpdate = true;
+  t.wrapS = t.wrapT = THREE.RepeatWrapping;
+  t.repeat.set(Math.max(breedte, diepte) / KRAT.HOUT_TEGEL, hoogte / KRAT.HOUT_TEGEL);
+  return t;
+}
+
 export function podium(breedte = 8) {
   const groep = new THREE.Group();
   const vloer = doos(breedte, 1.2, 5, PALET.korst);
@@ -1055,7 +1094,7 @@ function gebouwdScherm(breedte, hoogte) {
 
 export function knopZuil(tekst, kleur) {
   const groep = new THREE.Group();
-  const zuil = doos(1.8, 1.5, 1.4, PALET.blauwDiep);
+  const zuil = doos(1.8, 1.5, 1.4, PALET.korst, { emissief: 0.22 });
   zuil.position.y = 0.75;
   groep.add(zuil);
   const knop = cilinder(0.62, 0.5, kleur, { emissief: 0.6 });
@@ -1165,8 +1204,8 @@ export function deur(regels, breedte = 3, hoogte = 4.6) {
 function gemodelleerdeDeur(regels) {
   const groep = new THREE.Group();
   const m = MODEL.deur;
-  const poort = m.wortel.clone();
-  groep.add(poort);
+  const poortMesh = m.wortel.clone();
+  groep.add(poortMesh);
 
   const bordje = label(regels, { breedte: m.breedte * 0.86, grootte: 52, plaat: true });
   // Ruim vóór het model en niet er middenin: een 3D-prop heeft diepte, en een
@@ -1191,12 +1230,12 @@ function gemodelleerdeDeur(regels) {
   groep.add(schijn);
 
   groep.userData.hoogte = m.hoogte;
-  groep.userData.blad = poort;
+  groep.userData.blad = poortMesh;
   groep.userData.kleuren = (kleur) => {
     gloedMat.color.set(kleur);
     gloedMat.opacity = 0.62;
   };
-  groep.userData.open = () => { poort.visible = false; schijn.visible = false; };
+  groep.userData.open = () => { poortMesh.visible = false; schijn.visible = false; };
   return groep;
 }
 
@@ -1496,16 +1535,23 @@ export function wachttunnel(lengte = 10, hoogte = 6) {
   bovenkant.position.set(0, hoogte + 0.45, -1);
   groep.add(bovenkant);
 
-  const poort = doos(lengte - 0.6, hoogte - 0.4, 0.5, PALET.blauw, { plat: true, emissief: 0.12 });
-  poort.position.set(0, (hoogte - 0.4) / 2, 0.6);
-  groep.add(poort);
-  groep.userData.poort = poort;
+  // dezelfde planken als de kratten: een dichte poort hoort van hout te zijn,
+  // niet van een egaal blauw vlak zo groot als het scherm
+  const pb = lengte - 0.6;
+  const ph = hoogte - 0.4;
+  const luik = TEX.hout
+    ? new THREE.Mesh(new THREE.BoxGeometry(pb, ph, 0.5),
+      new THREE.MeshLambertMaterial({ map: houtVlak(pb, ph, 0.5), color: 0xa78256 }))
+    : doos(pb, ph, 0.5, PALET.korst, { plat: true });
+  luik.position.set(0, ph / 2, 0.6);
+  groep.add(luik);
+  groep.userData.poort = luik;
 
   for (let i = 1; i < 5; i++) {
     const balk = doos(lengte - 1.0, 0.24, 0.2, PALET.goud, { emissief: 0.3 });
     balk.position.set(0, i * (hoogte - 0.4) / 5, 0.9);
     groep.add(balk);
-    poort.userData[`balk${i}`] = balk;
+    luik.userData[`balk${i}`] = balk;
     groep.userData[`balk${i}`] = balk;
   }
 

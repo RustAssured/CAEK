@@ -192,7 +192,7 @@ export function bouwReview(level, spel, { nummer, sectieId, taak, zaalBreedte, u
     if (!rest.length) return;
     sp.hud.kaart('DE REVIEW IS NOG NIET AF', rest.join(' · '), 3200);
   };
-  const hek = props.doos(0.6, 6.4, 5, PALET.steen, { plat: true });
+  const hek = props.poort(0.8, 6.4, 5);
   level.plaats(hek, muurX + 0.5, 3.2, -1);
   zaal.uitgang = uitgang;
   zaal.hek = hek;

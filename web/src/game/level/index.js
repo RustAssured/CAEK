@@ -11,8 +11,9 @@
  * deel is geen herhaling om de herhaling: de zaal is vanaf review 1 vol, en
  * wat groeit is het aantal gouden lijnen naar het Doelenwiel. */
 
+import * as THREE from 'three';
 import * as props from '../../world/props.js';
-import { PALET } from '../../world/materialen.js';
+import { PALET, maskeer } from '../../world/materialen.js';
 import { zetAchtergrond, zetProcedureleAchtergrond } from '../../world/achtergrond.js';
 import { SECTIES, WERELD_EINDE } from '../../config.js';
 import { bouwPlanning } from './planning.js';
@@ -57,6 +58,8 @@ export function bouwLevel(level, spel) {
  * de procedurele achtergrond er, en die wordt opgeruimd zodra de platen laden
  * -- anders zie je de blokkendozen door de schilderijen heen. */
 function decor(level, spel) {
+  zetDiepte(level);
+
   const terugval = [];
   const merk = level.scene.children.length;
   zetProcedureleAchtergrond(level);
@@ -71,6 +74,37 @@ function decor(level, spel) {
     for (let x = 14; x < WERELD_EINDE; x += 34) {
       level.plaats(props.lantaarn(4.6), x, 0, -3.4);
     }
+  });
+}
+
+/**
+ * Zwart onder de wereld.
+ *
+ * Waar een gat in de vloer zit -- de sprong in sprint 1, de achttien eenheden
+ * van de Pretzel -- keek je dwars door de wereld heen tegen de ónderrand van de
+ * verste achtergrondplaat aan. Dat las als een lichtblauwe rechthoek die in de
+ * lucht hing, en het was het meest storende ding in het hele spel.
+ *
+ * Eén vlak lost het op: een donkere wand die achter alles staat maar vóór de
+ * achtergrondplaten, en die alles onder de grondlijn opslokt. Hij loopt met de
+ * camera mee, dus één quad volstaat voor de hele wereld.
+ */
+function zetDiepte(level) {
+  const materiaal = new THREE.MeshBasicMaterial({ color: 0x070d24, toneMapped: false });
+  // dit vlak is geen decor maar een gat; er hoort geen verf overheen
+  maskeer(materiaal, 0);
+  const wand = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), materiaal);
+  wand.renderOrder = -5;          // na de achtergrondplaten, vóór de wereld
+  level.scene.add(wand);
+
+  level.tik((dt, speler, spel) => {
+    const camera = spel.camera;
+    const afstand = Math.abs(camera.position.z + 12.5);
+    const hoogte = 2 * afstand * Math.tan((camera.fov * Math.PI) / 360) * 1.4;
+    const breedte = hoogte * camera.aspect * 1.4;
+    wand.scale.set(breedte, hoogte, 1);
+    // bovenrand precies op de grondlijn: alles erboven blijft achtergrond
+    wand.position.set(camera.position.x, -hoogte / 2, -12.5);
   });
 }
 
